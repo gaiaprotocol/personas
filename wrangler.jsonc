@@ -14,7 +14,7 @@
 		"enabled": true
 	},
 	"env": {
-		"development": {
-		}
+		"development": {},
+		"testnet": {}
 	}
 }
