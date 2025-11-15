@@ -13,8 +13,19 @@
 	"observability": {
 		"enabled": true
 	},
+	"vars": {
+		"ENV_TYPE": "prod"
+	},
 	"env": {
-		"development": {},
-		"testnet": {}
+		"development": {
+			"vars": {
+				"ENV_TYPE": "dev"
+			}
+		},
+		"testnet": {
+			"vars": {
+				"ENV_TYPE": "testnet"
+			}
+		}
 	}
 }
