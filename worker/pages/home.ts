@@ -4,7 +4,7 @@ import { head } from './head';
 import { scripts } from './scripts';
 import { topBar } from './top-bar';
 
-function home() {
+function home(search: string) {
   return '<!DOCTYPE html>' + h(
     'html.dark', { lang: 'en' },
     head('Gaia Personas'),
@@ -20,7 +20,7 @@ function home() {
           bottomBar,
         ),
       ),
-      ...scripts
+      ...scripts(search)
     )
   );
 }
