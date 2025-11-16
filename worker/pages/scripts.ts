@@ -14,6 +14,7 @@ const scripts = (search: string) => {
           fetch("${bundleUrl}", { method: "HEAD" }).then((response) => {
             if (response.status === 403) {
               document.documentElement.classList.remove('app-loading');
+              document.documentElement.classList.add('app-error');
               document.body.innerHTML =
                 "This service is not available in your current location.";
             }
