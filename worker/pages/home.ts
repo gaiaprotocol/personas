@@ -1,8 +1,8 @@
 import { h } from '@webtaku/h';
-import { head } from './head';
-import { bundle } from './bundle';
-import { topBar } from './top-bar';
 import { bottomBar } from './bottom-bar';
+import { head } from './head';
+import { scripts } from './scripts';
+import { topBar } from './top-bar';
 
 function home() {
   return '<!DOCTYPE html>' + h(
@@ -20,7 +20,7 @@ function home() {
           bottomBar,
         ),
       ),
-      bundle
+      ...scripts
     )
   );
 }
