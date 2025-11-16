@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 module.exports = {
@@ -46,10 +47,28 @@ module.exports = {
     ]
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js']
+    extensions: ['.tsx', '.ts', '.js'],
+    alias: {
+      react: path.resolve(__dirname, 'node_modules/react'),
+      'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+      '@tanstack/react-query': path.resolve(__dirname, 'node_modules/@tanstack/react-query'),
+      '@react-native-async-storage/async-storage': false,
+    },
   },
   plugins: [
     new MiniCssExtractPlugin({ filename: 'styles.css' }),
+    new webpack.DefinePlugin({
+      GAIA_API_BASE_URI: JSON.stringify(
+        process.env.NODE_ENV === 'production'
+          ? 'https://api.gaia.cc'
+          : (process.env.NODE_ENV === 'testnet'
+            ? 'https://testnet.api.gaia.cc'
+            : 'http://localhost:8080')
+      ),
+      API_BASE_URI: JSON.stringify('/api'),
+      APP_NAME: JSON.stringify('Gaia Personas'),
+      WALLET_CONNECT_PROJECT_ID: JSON.stringify('20437eb27187e0da3ced6d79ead2978b'),
+    })
   ],
   mode: 'development'
 };
