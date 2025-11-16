@@ -13,6 +13,7 @@ const scripts = (search: string) => {
       function handleScriptError() {
           fetch("${bundleUrl}", { method: "HEAD" }).then((response) => {
             if (response.status === 403) {
+              document.documentElement.classList.remove('app-loading');
               document.body.innerHTML =
                 "This service is not available in your current location.";
             }

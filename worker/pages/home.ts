@@ -6,7 +6,7 @@ import { topBar } from './top-bar';
 
 function home(search: string) {
   return '<!DOCTYPE html>' + h(
-    'html.dark', { lang: 'en' },
+    'html.dark.app-loading', { lang: 'en' },
     head('Gaia Personas'),
     h(
       'body.sl-theme-dark',

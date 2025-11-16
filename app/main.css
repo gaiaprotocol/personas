@@ -101,6 +101,12 @@ html {
   line-height: var(--sl-line-height-normal);
   padding: 0;
   margin: 0;
+  background-color: var(--docs-background-color);
+  color: var(--sl-color-neutral-900);
+}
+
+.app-loading body {
+  visibility: hidden;
 }
 
 body {

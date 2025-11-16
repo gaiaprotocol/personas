@@ -17,3 +17,5 @@ const backHandler = (event: BackButtonEvent) => {
 document.addEventListener('ionBackButton' as any, backHandler);
 
 defineCustomElements(window);
+
+document.documentElement.classList.remove('app-loading');
