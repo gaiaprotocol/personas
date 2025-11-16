@@ -19,7 +19,7 @@ const scripts = (search: string) => {
           });
         }
     `),
-    h('script', { src: bundleUrl }),
+    h('script', { src: bundleUrl, onerror: 'handleScriptError()' }),
   ];
 };
 
