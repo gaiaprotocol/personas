@@ -9,7 +9,7 @@ const homeTab = h(
     {
       class:
         // 헤더 높이 제외하고 세로 가운데 정렬
-        "min-h-[calc(100vh-112px)] flex items-center justify-center px-4 md:px-8",
+        "min-h-[100%] flex items-center justify-center px-4 md:px-8",
     },
     // 실제 콘텐츠 폭을 제한해서 가운데 정렬
     h(
@@ -84,7 +84,7 @@ const homeTab = h(
         )
       )
     )
-  )
+  ),
 );
 
 export { homeTab };
