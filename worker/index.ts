@@ -1,4 +1,4 @@
-import { home } from "./pages/home";
+import { website } from "./pages/website";
 
 export default {
   async fetch(request, env, ctx): Promise<Response> {
@@ -6,7 +6,7 @@ export default {
 
     if (url.pathname === '/api/envtype') return new Response(env.ENV_TYPE);
 
-    if (url.pathname === '/') return new Response(home(url.search), { headers: { 'Content-Type': 'text/html' } });
+    if (url.pathname === '/') return new Response(website(url.search), { headers: { 'Content-Type': 'text/html' } });
 
     return new Response('Not Found', { status: 404 });
   },

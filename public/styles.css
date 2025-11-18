@@ -2837,6 +2837,7 @@ ion-modal ion-content {
     display: none;
   }
 }
+
 .login-wrapper {
   display: flex;
   flex-direction: column;

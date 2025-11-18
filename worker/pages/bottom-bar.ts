@@ -21,11 +21,8 @@ const tabs: {
 const tabButtons: string[] = [];
 
 const bottomBar = h(
-  'ion-tab-bar',
-  {
-    slot: 'bottom',
-    id: 'main-tab-bar',
-  },
+  'ion-tab-bar#main-tab-bar',
+  { slot: 'bottom' },
   ...tabs.map((tab, index) => {
     const btn = h(
       'ion-tab-button',
@@ -38,7 +35,6 @@ const bottomBar = h(
       h('ion-icon', { name: tab.icon }),
       h('ion-label', tab.label)
     );
-
     tabButtons.push(btn);
     return btn;
   })

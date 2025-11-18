@@ -26,6 +26,12 @@ document.documentElement.classList.remove('app-loading');
 
 document.addEventListener('DOMContentLoaded', () => {
 
+  const startTradingButton = document.getElementById('start-trading');
+  startTradingButton?.addEventListener('click', async () => {
+    const tabs = document.querySelector('ion-tabs');
+    await tabs?.select('explore');
+  });
+
   const profileBtns = document.querySelectorAll('#open-profile');
   profileBtns.forEach((profileBtn) => {
     profileBtn.addEventListener('click', () => {
