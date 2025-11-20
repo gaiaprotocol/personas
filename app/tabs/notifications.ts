@@ -92,7 +92,11 @@ export class NotificationsTab {
   private markAllButton!: HTMLButtonElement;
   private listEl!: HTMLElement;
 
-  constructor() {
+  private navigate?: (path: string) => void;
+
+  constructor(navigate?: (path: string) => void) {
+    this.navigate = navigate;
+
     this.items = [...sampleNotifications];
 
     this.el = el('section.notifications-wrapper');
@@ -243,9 +247,28 @@ export class NotificationsTab {
         item.unread = false;
         this.renderList();
         this.updateUnreadSummary();
-      } else {
-        // 이미 읽은 알림을 눌렀을 때는 여기에 상세 화면/링크 연결 가능
+      }
+
+      if (!this.navigate) {
         console.log('Open notification target:', item.id);
+        return;
+      }
+
+      // ✅ 타입에 따라 임시 라우팅 (원하면 데이터 구조에 맞게 바꾸면 됨)
+      switch (item.type) {
+        case 'like':
+        case 'comment':
+        case 'buy':
+        case 'mention':
+          this.navigate('/post/p1');        // 실제로는 item.targetPostId 같은 걸 쓰면 좋음
+          break;
+        case 'follow':
+          this.navigate('/profile/test');   // 실제로는 item.targetProfileId 등
+          break;
+        case 'system':
+        default:
+          // system은 이동 없이 두거나 다른 경로로
+          break;
       }
     });
 

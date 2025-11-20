@@ -1,0 +1,58 @@
+/* =========================
+   Settings 모달 공통 스타일
+   ========================= */
+
+ion-modal.settings-modal {
+  --background: #111111;
+}
+
+ion-modal.settings-modal ion-toolbar {
+  --background: #111111;
+  --color: #ffffff;
+}
+
+/* 핵심 수정 사항: ion-content에 직접 여백 변수 설정 */
+ion-modal.settings-modal ion-content {
+  --background: #111111;
+  --color: #ffffff;
+
+  /* 상하좌우 여백을 여기서 제어합니다 */
+  --padding-top: 16px;
+  --padding-bottom: 24px;
+  --padding-start: 20px;
+  /* 좌측 여백 */
+  --padding-end: 20px;
+  /* 우측 여백 */
+}
+
+/* 기존의 .settings-body 스타일은 제거하거나 불필요해집니다. */
+/* 만약 div 래퍼를 유지한다면 아래처럼 패딩을 없애주세요. */
+ion-modal.settings-modal .settings-body {
+  padding: 0;
+  /* 혹은 width: 100%; 등을 추가하여 안전장치 마련 */
+}
+
+ion-modal.settings-modal ion-list {
+  margin-bottom: 12px;
+  background: transparent;
+}
+
+/* 배경색 문제 방지 (선택사항) */
+ion-modal.settings-modal ion-list,
+ion-modal.settings-modal ion-item {
+  --background: #111111;
+  --color: #ffffff;
+}
+
+ion-modal.settings-modal .settings-footer {
+  margin-top: 8px;
+}
+
+ion-modal.settings-modal .settings-save-btn {
+  --background: #d6b36a;
+  --background-activated: #c8a457;
+  --color: #000000;
+  --border-radius: 8px;
+  width: 100%;
+  font-weight: 700;
+}

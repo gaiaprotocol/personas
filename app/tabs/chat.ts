@@ -12,7 +12,7 @@ interface ChatMessage {
 }
 
 interface ChatThread {
-  id: string;
+  id: string; // 'alex' | 'luna' | 'noah' -> /profile/:id 에 쓸 예정
   name: string;
   holdersInChat: number;
   unreadCount: number;
@@ -96,12 +96,16 @@ export class ChatTab {
   private threadListEl!: HTMLElement;
 
   // 데스크톱 채팅 영역 레퍼런스
-  private mainNameEl!: HTMLElement;
+  private mainNameEl!: HTMLAnchorElement;
   private mainStatusEl!: HTMLElement;
   private messagesEl!: HTMLElement;
   private inputEl!: HTMLInputElement;
 
-  constructor() {
+  private navigate?: (path: string) => void;
+
+  constructor(navigate?: (path: string) => void) {
+    this.navigate = navigate;
+
     this.threads = sampleThreads;
     this.filteredThreads = [...this.threads];
     this.currentThread = this.threads[0] ?? null;
@@ -118,6 +122,15 @@ export class ChatTab {
 
     shell.append(sidebar, desktopMain);
     this.el.append(shell);
+
+    // 메인 헤더 이름 클릭 시 /profile/:id 로 이동
+    if (this.mainNameEl && this.navigate) {
+      this.mainNameEl.addEventListener('click', (e) => {
+        if (!this.currentThread) return;
+        e.preventDefault();
+        this.navigate?.(`/profile/${this.currentThread.id}`);
+      });
+    }
 
     this.renderThreadList();
     this.renderCurrentThread();
@@ -183,13 +196,19 @@ export class ChatTab {
     this.threadListEl.innerHTML = '';
 
     this.filteredThreads.forEach((thread) => {
+      const nameLink = el(
+        'a.chat-thread-name',
+        { href: `/profile/${thread.id}` },
+        thread.name
+      ) as HTMLAnchorElement;
+
       const item = el(
         'div.chat-thread-item',
         { 'data-id': thread.id },
         el('div.chat-thread-avatar', thread.avatarInitial),
         el(
           'div.chat-thread-main',
-          el('div.chat-thread-name', thread.name),
+          nameLink,
           el(
             'div.chat-thread-sub',
             `${thread.holdersInChat} holders in chat`
@@ -204,6 +223,7 @@ export class ChatTab {
         item.classList.add('active');
       }
 
+      // 전체 아이템 클릭 → 채팅 스레드 선택
       item.addEventListener('click', () => {
         this.currentThread = thread;
         thread.unreadCount = 0;
@@ -217,6 +237,15 @@ export class ChatTab {
         }
       });
 
+      // 이름 링크 클릭 → 프로필로 이동 (SPA 라우팅)
+      if (this.navigate) {
+        nameLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation(); // 채팅 선택 클릭과 분리
+          this.navigate?.(`/profile/${thread.id}`);
+        });
+      }
+
       this.threadListEl.append(item);
     });
   }
@@ -228,7 +257,8 @@ export class ChatTab {
 
     const avatar = el('div.chat-main-avatar');
 
-    this.mainNameEl = el('div.chat-main-name');
+    // 메인 이름을 a 태그로 만들어서 클릭 시 프로필로 이동
+    this.mainNameEl = el('a.chat-main-name', { href: '#' }) as HTMLAnchorElement;
     this.mainStatusEl = el('div.chat-main-status');
 
     const header = el(
@@ -280,6 +310,9 @@ export class ChatTab {
     if (!this.currentThread) return;
 
     this.mainNameEl.textContent = this.currentThread.name;
+    // href도 같이 업데이트 (직접 클릭해서 이동할 수 있게)
+    this.mainNameEl.setAttribute('href', `/profile/${this.currentThread.id}`);
+
     this.mainStatusEl.textContent = `${this.currentThread.holdersInChat} holders online`;
 
     // 메시지 리스트 렌더

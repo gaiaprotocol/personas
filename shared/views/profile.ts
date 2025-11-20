@@ -143,7 +143,6 @@ export function profile(b: AnyBuilder) {
         : {},
       b(
         "div.profile-social-left",
-        // Ionicon
         b("ion-icon.profile-social-icon", { name: link.icon }),
         b("span.profile-social-label", link.label)
       ),
@@ -157,10 +156,13 @@ export function profile(b: AnyBuilder) {
     b("div.profile-social-list", ...socialLinkNodes)
   );
 
-  // ===== Recent Posts 카드 =====
+  // ===== Recent Posts 카드 (🔗 href=/post/:id) =====
   const postRows = posts.map((post) =>
     b(
-      "div.profile-post-row",
+      "a.profile-post-row",
+      {
+        href: `/post/${post.id}`
+      },
       b("div.profile-post-content", post.content),
       b("div.profile-post-meta", post.timeAgo)
     )

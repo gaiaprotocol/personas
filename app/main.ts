@@ -6,6 +6,7 @@ import Navigo from 'navigo';
 import { tabConfig } from '../shared/tab-config';
 import './main.css';
 import { openLoginModal } from './modals/login';
+import { AppSettings, createSettingsModal } from './modals/settings';
 import { ChatTab } from './tabs/chat';
 import { ExploreTab } from './tabs/explore';
 import { FeedTab } from './tabs/feed';
@@ -84,36 +85,28 @@ function setupRoutes() {
   //   디테일 라우트들
   // =========================
 
-  // /profile/:id → Profile 탭 활성화 + profile-tab-content에 렌더
   router.on('/profile/:id', (match: any) => {
     const { id } = match.data || {};
 
-    // 1) 프로필 탭 활성화
     setActiveTab('profile');
 
-    // 2) 해당 탭 content에 ProfileTab 렌더
     const profileContent = document.getElementById('profile-tab-content');
     if (profileContent) {
-      profileContent.innerHTML = ''; // 기존 내용 제거 (선택)
-      const profileTab = new ProfileTab(); // id를 쓰고 싶으면 생성자/메서드에 넘기면 됨
-      // 예: const profileTab = new ProfileTab(id);
+      profileContent.innerHTML = '';
+      const profileTab = new ProfileTab(router.navigate.bind(router));
       profileContent.appendChild(profileTab.el);
     }
   });
 
-  // /post/:id → Post 탭 활성화 + post-tab-content에 렌더
   router.on('/post/:id', (match: any) => {
     const { id } = match.data || {};
 
-    // 1) 포스트 탭 활성화
     setActiveTab('post');
 
-    // 2) 해당 탭 content에 PostTab 렌더
     const postContent = document.getElementById('post-tab-content');
     if (postContent) {
-      postContent.innerHTML = ''; // 기존 내용 제거 (선택)
-      const postTab = new PostTab(); // 필요하면 id 전달
-      // 예: const postTab = new PostTab(id);
+      postContent.innerHTML = '';
+      const postTab = new PostTab(router.navigate.bind(router));
       postContent.appendChild(postTab.el);
     }
   });
@@ -134,14 +127,14 @@ function setupRoutes() {
 document.addEventListener('DOMContentLoaded', () => {
   setupRoutes();
 
-  // Start Trading 버튼 → /explore로 라우트
+  const navigate = (path: string) => router.navigate(path);
+
   const startTradingButton = document.getElementById('start-trading');
   startTradingButton?.addEventListener('click', (e) => {
     e.preventDefault();
-    router.navigate('/explore');
+    navigate('/explore');
   });
 
-  // 프로필 버튼 → 로그인 모달
   const profileBtns = document.querySelectorAll('#open-profile');
   profileBtns.forEach((profileBtn) => {
     profileBtn.addEventListener('click', () => {
@@ -149,67 +142,96 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // 로고 클릭 → /
   const logos = document.querySelectorAll('ion-title a');
   logos.forEach((logo) => {
     logo.addEventListener('click', (e) => {
       e.preventDefault();
-      router.navigate('/');
+      navigate('/');
     });
   });
 
-  // 탭 버튼이 a 태그는 아니니까 직접 라우트 호출
+
   const tabButtons = document.querySelectorAll('#main-tab-bar ion-tab-button');
   tabButtons.forEach((btn) => {
     const tabKey = btn.getAttribute('data-tab');
     if (!tabKey) return;
 
     const path = getPathFromTab(tabKey);
-
-    // 접근성/UX용: href 넣어두면 우클릭/미들클릭 등도 더 자연스러움
     btn.setAttribute('href', path);
 
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      router.navigate(path);
+      navigate(path);
     });
   });
 
-  // explore content mount
+  // 앱 전체에서 사용할 현재 설정 값 (원하면 localStorage에서 불러오기)
+  let currentSettings: AppSettings = {
+    darkMode: true,
+    pushEnabled: true,
+    tradeNotifications: true,
+    commentNotifications: true,
+    marketingEmails: false,
+    language: 'system',
+  };
+
+  const settingsBtns = document.querySelectorAll('#open-settings');
+  settingsBtns.forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+
+      const modal = createSettingsModal(currentSettings, {
+        async onSave(next) {
+          // 1) 메모리 상의 설정 업데이트
+          currentSettings = next;
+
+          // 2) 필요하면 여기서 persist
+          // localStorage.setItem('app-settings', JSON.stringify(next));
+          // 또는 서버로 PATCH /settings 호출 등
+        },
+      });
+
+      document.body.appendChild(modal);
+      await modal.present();
+    });
+  });
+
+  // =========================
+  //   나머지 탭 mount 코드
+  // =========================
   const exploreContent = document.getElementById('explore-tab-content');
   if (exploreContent) {
-    const exploreTab = new ExploreTab();
+    const exploreTab = new ExploreTab(navigate);
     exploreContent.appendChild(exploreTab.el);
   }
 
   const feedContent = document.getElementById('feed-tab-content');
   if (feedContent) {
-    const feedTab = new FeedTab();
+    const feedTab = new FeedTab(navigate);
     feedContent.appendChild(feedTab.el);
   }
 
   const chatContent = document.getElementById('chat-tab-content');
   if (chatContent) {
-    const chatTab = new ChatTab();
+    const chatTab = new ChatTab(navigate);
     chatContent.appendChild(chatTab.el);
   }
 
   const notificationsContent = document.getElementById('notifications-tab-content');
   if (notificationsContent) {
-    const notificationsTab = new NotificationsTab();
+    const notificationsTab = new NotificationsTab(navigate);
     notificationsContent.appendChild(notificationsTab.el);
   }
 
-  // 필요하다면 기본 프로필/포스트 탭 내용도 초기 렌더 가능
   const profileContent = document.getElementById('profile-tab-content');
   if (profileContent) {
-    const profileTab = new ProfileTab();
+    const profileTab = new ProfileTab(navigate);
     profileContent.appendChild(profileTab.el);
   }
 
   const postContent = document.getElementById('post-tab-content');
   if (postContent) {
-    const postTab = new PostTab();
+    const postTab = new PostTab(navigate);
     postContent.appendChild(postTab.el);
   }
 });

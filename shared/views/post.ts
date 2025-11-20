@@ -71,6 +71,14 @@ export function post(b: AnyBuilder) {
     }
   ];
 
+  // handle → 슬러그(/profile/:id)용 변환
+  const toProfileId = (handle: string, fallbackName: string) =>
+    handle.startsWith('@')
+      ? handle.slice(1) // "@noahtech" → "noahtech"
+      : fallbackName.toLowerCase().replace(/\s+/g, '-'); // "Noah Tech" → "noah-tech"
+
+  const mainProfileId = toProfileId(postData.handle, postData.authorName);
+
   // ---- 요소 레퍼런스 (클라이언트에서만 HTMLElement로 세팅) ----
   let likeActionEl: HTMLElement | null = null;
   let likeCountEl: HTMLElement | null = null;
@@ -98,7 +106,6 @@ export function post(b: AnyBuilder) {
       `❤ ${reply.likes}`
     );
 
-    // 클라이언트에서만 인터랙션 설정
     if (typeof likeRaw !== 'string') {
       const likeEl = likeRaw as HTMLElement;
       if (reply.liked) {
@@ -114,6 +121,8 @@ export function post(b: AnyBuilder) {
       };
     }
 
+    const profileId = toProfileId(reply.handle, reply.authorName);
+
     const item = b(
       'div.post-reply-item',
       { 'data-id': reply.id },
@@ -122,7 +131,12 @@ export function post(b: AnyBuilder) {
         'div.post-reply-body',
         b(
           'div.post-reply-header',
-          b('span.post-reply-author', reply.authorName),
+          // 🔗 작성자 → 프로필 링크
+          b(
+            'a.post-reply-author',
+            { href: `/profile/${profileId}` },
+            reply.authorName
+          ),
           b('span.post-reply-handle', reply.handle),
           b('span', '·'),
           b('span.post-reply-time', reply.time)
@@ -251,7 +265,12 @@ export function post(b: AnyBuilder) {
       'div.post-main-body',
       b(
         'div.post-main-header',
-        b('div.post-main-author', postData.authorName),
+        // 🔗 메인 작성자 → 프로필 링크
+        b(
+          'a.post-main-author',
+          { href: `/profile/${mainProfileId}` },
+          postData.authorName
+        ),
         b('div.post-main-handle', postData.handle)
       ),
       b('div.post-main-content', postData.content),

@@ -66,7 +66,10 @@ export class ExploreTab {
   private filtered: PersonaData[];
   private currentSort: SortKey = 'trending';
 
-  constructor() {
+  private navigate?: (path: string) => void;
+
+  constructor(navigate?: (path: string) => void) {
+    this.navigate = navigate;
     this.personas = samplePersonas;
     this.filtered = [...this.personas];
 
@@ -242,10 +245,14 @@ export class ExploreTab {
           this.createStatCol('Holders', p.holders),
           this.createStatCol('Volume', p.volume)
         )
-      );
+      ) as HTMLElement;
 
       row.addEventListener('click', () => {
-        console.log(`Navigating to ${p.name}`);
+        if (this.navigate) {
+          this.navigate(`/profile/${p.id}`);
+        } else {
+          console.log(`Navigate to /profile/${p.id}`);
+        }
       });
 
       this.listEl.append(row);

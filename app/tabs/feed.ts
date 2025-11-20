@@ -64,7 +64,10 @@ export class FeedTab {
   private composerCounter!: HTMLElement;
   private composerButton!: HTMLButtonElement;
 
-  constructor() {
+  private navigate?: (path: string) => void;
+
+  constructor(navigate?: (path: string) => void) {
+    this.navigate = navigate;
     this.posts = [...samplePosts];
 
     this.el = el('section.feed-wrapper');
@@ -248,8 +251,11 @@ export class FeedTab {
     ) as HTMLElement;
 
     item.addEventListener('click', () => {
-      console.log('Open post detail:', post.id);
-      // 여기서 모달이나 상세 페이지로 연결 가능
+      if (this.navigate) {
+        this.navigate(`/post/${post.id}`);
+      } else {
+        console.log('Open post detail:', post.id);
+      }
     });
 
     return item;
