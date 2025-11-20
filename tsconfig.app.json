@@ -19,11 +19,14 @@
     "moduleResolution": "node",
     "skipLibCheck": true,
     "strict": true,
-    "rootDir": "./app",
+    "rootDir": "./",
     "outDir": "dist"
   },
   "include": [
     "./app",
+    "./shared/**/*",
+    "./shared/**/*.json",
+    "./public/**/*.json"
   ],
   "exclude": [
     "node_modules",

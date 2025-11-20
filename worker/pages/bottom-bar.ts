@@ -1,29 +1,12 @@
-import { h } from "@webtaku/h";
-
-const tabs: {
-  key: string;
-  icon: string;
-  label: string;
-  path: string;
-}[] = [
-    { key: 'home', icon: 'home', label: 'Home', path: '/home' },
-    { key: 'explore', icon: 'compass', label: 'Explore', path: '/explore' },
-    { key: 'chat', icon: 'chatbubbles', label: 'Chat', path: '/chat' },
-    {
-      key: 'notifications',
-      icon: 'notifications',
-      label: 'Notifications',
-      path: '/notifications',
-    },
-    { key: 'wallet', icon: 'wallet', label: 'Wallet', path: '/wallet' },
-  ];
+import { h } from '@webtaku/h';
+import { tabConfig } from '../../shared/tab-config';
 
 const tabButtons: string[] = [];
 
 const bottomBar = h(
   'ion-tab-bar#main-tab-bar',
   { slot: 'bottom' },
-  ...tabs.map((tab, index) => {
+  ...tabConfig.map((tab, index) => {
     const btn = h(
       'ion-tab-button',
       {
@@ -33,11 +16,11 @@ const bottomBar = h(
         'aria-selected': index === 0 ? 'true' : 'false',
       },
       h('ion-icon', { name: tab.icon }),
-      h('ion-label', tab.label)
+      h('ion-label', tab.label),
     );
     tabButtons.push(btn);
     return btn;
-  })
+  }),
 );
 
 export { bottomBar };

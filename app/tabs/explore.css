@@ -1,0 +1,221 @@
+:root {
+  --bg-page: #000000;
+  --bg-card: #111111;
+  --bg-card-hover: #1a1a1a;
+  --border-color: #222222;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --accent-yellow: #f4d03f;
+  --accent-green: #2ecc71;
+}
+
+/* 전체 레이아웃 */
+.explore-wrapper {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 2rem 1.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.explore-wrapper>* {
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 헤더 */
+.explore-header h2 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.explore-header p {
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  font-size: 1rem;
+}
+
+/* 검색 + 탭 + 카운트 영역 */
+.explore-controls {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* 검색창 커스텀 */
+.explore-search sl-input::part(base) {
+  background-color: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding-inline: 0.5rem;
+}
+
+.explore-search sl-input::part(input) {
+  color: #ffffff;
+}
+
+/* 탭 그룹 커스텀 */
+.explore-tabs sl-tab::part(base) {
+  color: #666;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  transition: color 0.2s;
+}
+
+.explore-tabs sl-tab[active]::part(base) {
+  color: var(--text-primary);
+  /* 활성 탭: 흰색 텍스트 */
+}
+
+.explore-tabs::part(nav) {
+  border-bottom: 1px solid #222;
+}
+
+/* 실질적인 탭 패널 영역은 쓰지 않으므로 숨김 */
+.explore-tabs::part(body) {
+  display: none;
+}
+
+/* 활성 탭 인디케이터: 노란색 바 */
+.explore-tabs::part(active-tab-indicator) {
+  background-color: var(--accent-yellow);
+}
+
+/* 결과 카운트: 탭 바로 아래 */
+.explore-count {
+  margin: 0.75rem 0 0;
+  color: #555;
+  font-size: 0.85rem;
+}
+
+/* 리스트 영역 */
+.explore-list {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* 개별 행 (Persona Row) */
+.persona-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.persona-row:hover {
+  background-color: var(--bg-card-hover);
+  border-color: #333;
+  transform: translateY(-1px);
+}
+
+/* 왼쪽: 정보 영역 */
+.row-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+/* 아바타 */
+.avatar-wrapper sl-avatar {
+  --size: 3.2rem;
+}
+
+.avatar-wrapper sl-avatar::part(base) {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.icon-verified {
+  color: #3498db;
+  font-size: 0.9rem;
+}
+
+.role {
+  font-size: 0.85rem;
+  color: #777777;
+}
+
+/* 오른쪽: 스탯 영역 */
+.row-right {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.stat-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 60px;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: #555;
+  margin-bottom: 0.2rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ddd;
+}
+
+.text-highlight {
+  color: var(--accent-yellow);
+}
+
+.text-success {
+  color: var(--accent-green);
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+  .persona-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .row-right {
+    width: 100%;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .stat-col {
+    align-items: flex-start;
+  }
+}
