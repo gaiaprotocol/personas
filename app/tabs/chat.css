@@ -10,7 +10,7 @@
   --accent-teal: #006d75;
 }
 
-/* 전체 레이아웃 */
+/* 전체 래퍼 */
 .chat-wrapper {
   background: var(--bg-page);
   color: var(--text-primary);
@@ -20,6 +20,7 @@
   box-sizing: border-box;
 }
 
+/* 메인 쉘 (좌: 리스트 / 우: 채팅) */
 .chat-shell {
   max-width: 1200px;
   margin: 0 auto;
@@ -27,9 +28,11 @@
   display: flex;
   border-radius: 12px;
   overflow: hidden;
+  background: #050505;
 }
 
-/* 사이드바 (대화 목록) */
+/* ---------------- 사이드바 (대화 목록) ---------------- */
+
 .chat-sidebar {
   width: 320px;
   min-width: 280px;
@@ -49,22 +52,20 @@
   margin: 0 0 0.75rem;
 }
 
+/* 검색바 */
 .chat-search {
   padding: 0 1.5rem 1rem;
 }
 
-.chat-search sl-input::part(base) {
-  background-color: #111;
+.chat-search-input {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
   border-radius: 999px;
   border: none;
-}
-
-.chat-search sl-input::part(input) {
+  outline: none;
+  background: #111;
   color: #fff;
-}
-
-.chat-search sl-input::part(prefix) {
-  color: #777;
+  font-size: 0.9rem;
 }
 
 /* 대화 리스트 */
@@ -143,7 +144,8 @@
   color: #777;
 }
 
-/* 메인 채팅 영역 */
+/* ---------------- 메인 채팅 영역 (데스크톱) ---------------- */
+
 .chat-main {
   flex: 1;
   background: #050505;
@@ -151,7 +153,12 @@
   flex-direction: column;
 }
 
-/* 메인 헤더 */
+/* 데스크톱에서만 보이는 패널 */
+.chat-main-desktop {
+  display: flex;
+}
+
+/* 헤더 */
 .chat-main-header {
   padding: 1rem 1.75rem;
   border-bottom: 1px solid #181818;
@@ -191,7 +198,7 @@
   gap: 0.75rem;
 }
 
-/* 개별 메시지 */
+/* 메시지 행 */
 .chat-message-row {
   display: flex;
   align-items: flex-end;
@@ -205,6 +212,7 @@
   justify-content: flex-end;
 }
 
+/* 말풍선 */
 .chat-message-bubble {
   max-width: 60%;
   border-radius: 18px;
@@ -223,10 +231,12 @@
   color: #ffffff;
 }
 
+/* 메타 정보 (시간/작성자) */
 .chat-message-meta {
   font-size: 0.75rem;
   color: #888;
   margin: 0 0.5rem;
+  white-space: nowrap;
 }
 
 /* 입력 영역 */
@@ -243,14 +253,15 @@
   gap: 0.75rem;
 }
 
-.chat-input-inner sl-input::part(base) {
-  background: #111;
+.chat-input-field {
+  flex: 1;
   border-radius: 999px;
   border: none;
-}
-
-.chat-input-inner sl-input::part(input) {
+  outline: none;
+  background: #111;
   color: #fff;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
 }
 
 .chat-send-btn {
@@ -265,9 +276,14 @@
   cursor: pointer;
 }
 
-.chat-send-btn sl-icon {
-  font-size: 1.1rem;
-  color: #000;
+.chat-send-btn-icon {
+  width: 18px;
+  height: 18px;
+  border-style: solid;
+  border-width: 0 0 2px 2px;
+  border-color: #000;
+  transform: rotate(45deg);
+  margin-left: 2px;
 }
 
 .chat-input-note {
@@ -277,17 +293,28 @@
   text-align: center;
 }
 
-/* 반응형 */
+/* ---------------- 모바일: 레이아웃 & 모달 ---------------- */
+
 @media (max-width: 900px) {
   .chat-shell {
-    flex-direction: column;
     height: auto;
+    max-width: 100%;
+    border-radius: 0;
   }
 
-  .chat-sidebar {
-    width: 100%;
-    min-height: 220px;
-    border-right: none;
-    border-bottom: 1px solid #181818;
+  /* 데스크톱용 메인 패널은 모바일에서 숨김 */
+  .chat-main-desktop {
+    display: none;
   }
+}
+
+/* 모달 내부 채팅 UI에도 동일 스타일 재사용 */
+.chat-main-modal {
+  height: 100%;
+}
+
+/* ion-modal 자체에 대한 기본 커스터마이징 (원하면 더 조정 가능) */
+ion-modal.chat-room-modal {
+  --background: #050505;
+  --border-radius: 18px;
 }

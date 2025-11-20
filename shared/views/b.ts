@@ -45,7 +45,7 @@ type ElementProps<S extends Selector> =
   & DataAttributes
   & AriaAttributes;
 
-type ElementBuilder = <S extends Selector>(
-  selector: S = '' as S,
-  ...args: (string | ElementProps<S> | null | undefined)[]
-) => string
+export type AnyBuilder = <S extends Selector>(
+  selector: S,
+  ...args: (HTMLElement | string | ElementProps<S> | null | undefined)[]
+) => ElementBySelector<S> | string

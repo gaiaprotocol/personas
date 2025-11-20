@@ -1,4 +1,3 @@
-import '@shoelace-style/shoelace';
 import { el } from '@webtaku/el';
 import './chat.css';
 
@@ -7,7 +6,7 @@ type Sender = 'you' | 'other';
 interface ChatMessage {
   id: string;
   sender: Sender;
-  author: string; // 표시용 이름 (You / Luna Park 등)
+  author: string; // "You", "Luna Park" 등
   text: string;
   time: string;   // "2:45 PM"
 }
@@ -21,6 +20,7 @@ interface ChatThread {
   messages: ChatMessage[];
 }
 
+/** 데모용 샘플 데이터 */
 const sampleThreads: ChatThread[] = [
   {
     id: 'alex',
@@ -94,10 +94,12 @@ export class ChatTab {
   private currentThread: ChatThread | null = null;
 
   private threadListEl!: HTMLElement;
-  private messagesEl!: HTMLElement;
+
+  // 데스크톱 채팅 영역 레퍼런스
   private mainNameEl!: HTMLElement;
   private mainStatusEl!: HTMLElement;
-  private inputEl!: any; // sl-input
+  private messagesEl!: HTMLElement;
+  private inputEl!: HTMLInputElement;
 
   constructor() {
     this.threads = sampleThreads;
@@ -108,21 +110,22 @@ export class ChatTab {
 
     const shell = el('div.chat-shell');
 
-    /* ---------- 사이드바 ---------- */
+    // 사이드바
     const sidebar = this.buildSidebar();
 
-    /* ---------- 메인 영역 ---------- */
-    const main = this.buildMainArea();
+    // 데스크톱 메인 채팅 영역
+    const desktopMain = this.buildDesktopMain();
 
-    shell.append(sidebar, main);
+    shell.append(sidebar, desktopMain);
     this.el.append(shell);
 
     this.renderThreadList();
     this.renderCurrentThread();
   }
 
-  /* 사이드바 구성 */
-  private buildSidebar() {
+  /* ---------------- 사이드바 ---------------- */
+
+  private buildSidebar(): HTMLElement {
     const sidebar = el('div.chat-sidebar');
 
     const header = el(
@@ -130,30 +133,19 @@ export class ChatTab {
       el('h2.chat-sidebar-title', 'Chat')
     );
 
-    const search = el(
-      'div.chat-search',
-      el(
-        'sl-input',
-        {
-          type: 'search',
-          size: 'medium',
-          pill: true,
-          clearable: true,
-          placeholder: 'Search personas...'
-        },
-        el('sl-icon', { slot: 'prefix', name: 'search' })
-      ) as any
-    );
+    // 검색 인풋
+    const searchInput = el('input.chat-search-input', {
+      type: 'search',
+      placeholder: 'Search personas...'
+    }) as HTMLInputElement;
 
-    const searchInput = search.querySelector('sl-input') as any;
-    if (searchInput) {
-      searchInput.addEventListener('sl-input', (event: any) => {
-        const value = (event.target as any).value ?? '';
-        this.handleSearch(value);
-      });
-      searchInput.addEventListener('sl-clear', () => this.handleSearch(''));
-    }
+    searchInput.addEventListener('input', () => {
+      this.handleSearch(searchInput.value);
+    });
 
+    const search = el('div.chat-search', searchInput);
+
+    // 스레드 리스트 컨테이너
     this.threadListEl = el('div.chat-thread-list');
 
     const footer = el(
@@ -165,71 +157,6 @@ export class ChatTab {
     return sidebar;
   }
 
-  /* 메인 영역 구성 */
-  private buildMainArea() {
-    const main = el('div.chat-main');
-
-    // 헤더
-    const avatar = el('div.chat-main-avatar');
-    this.mainNameEl = el('div.chat-main-name');
-    this.mainStatusEl = el('div.chat-main-status');
-
-    const header = el(
-      'div.chat-main-header',
-      avatar,
-      el('div.chat-main-meta', this.mainNameEl, this.mainStatusEl)
-    );
-
-    // 메시지 영역
-    this.messagesEl = el('div.chat-messages');
-
-    // 입력 영역
-    const inputBar = el('div.chat-input-bar');
-
-    const input = el(
-      'sl-input',
-      {
-        size: 'large',
-        pill: true,
-        placeholder: 'Type a message...'
-      }
-    ) as any;
-
-    this.inputEl = input;
-
-    const sendBtn = el(
-      'button.chat-send-btn',
-      el('sl-icon', { name: 'send' })
-    );
-
-    const inputInner = el(
-      'div.chat-input-inner',
-      input,
-      sendBtn
-    );
-
-    const note = el(
-      'div.chat-input-note',
-      'Only persona holders can chat in this room'
-    );
-
-    inputBar.append(inputInner, note);
-
-    // 이벤트: 엔터 / 버튼 클릭 시 메시지 전송
-    input.addEventListener('keydown', (ev: KeyboardEvent) => {
-      if (ev.key === 'Enter' && !ev.shiftKey) {
-        ev.preventDefault();
-        this.sendMessage();
-      }
-    });
-
-    sendBtn.addEventListener('click', () => this.sendMessage());
-
-    main.append(header, this.messagesEl, inputBar);
-    return main;
-  }
-
-  /* 검색 */
   private handleSearch(raw: string) {
     const q = raw.toLowerCase().trim();
     if (!q) {
@@ -240,7 +167,7 @@ export class ChatTab {
       );
     }
 
-    // 현재 선택된 스레드가 필터에 없으면 첫 번째로 변경
+    // 현재 스레드가 필터에 없으면 첫 번째로 교체
     if (
       this.currentThread &&
       !this.filteredThreads.find((t) => t.id === this.currentThread!.id)
@@ -252,7 +179,6 @@ export class ChatTab {
     this.renderCurrentThread();
   }
 
-  /* 스레드 리스트 렌더 */
   private renderThreadList() {
     this.threadListEl.innerHTML = '';
 
@@ -260,10 +186,7 @@ export class ChatTab {
       const item = el(
         'div.chat-thread-item',
         { 'data-id': thread.id },
-        el(
-          'div.chat-thread-avatar',
-          thread.avatarInitial
-        ),
+        el('div.chat-thread-avatar', thread.avatarInitial),
         el(
           'div.chat-thread-main',
           el('div.chat-thread-name', thread.name),
@@ -275,7 +198,7 @@ export class ChatTab {
         thread.unreadCount > 0
           ? el('div.chat-thread-unread', String(thread.unreadCount))
           : null
-      );
+      ) as HTMLElement;
 
       if (this.currentThread && this.currentThread.id === thread.id) {
         item.classList.add('active');
@@ -284,24 +207,89 @@ export class ChatTab {
       item.addEventListener('click', () => {
         this.currentThread = thread;
         thread.unreadCount = 0;
+
         this.renderThreadList();
         this.renderCurrentThread();
+
+        // 모바일이면 모달로 채팅방 열기
+        if (window.matchMedia('(max-width: 900px)').matches) {
+          this.openMobileChatModal(thread);
+        }
       });
 
       this.threadListEl.append(item);
     });
   }
 
-  /* 현재 스레드 렌더 */
-  private renderCurrentThread() {
-    this.messagesEl.innerHTML = '';
+  /* ---------------- 데스크톱 메인 채팅 영역 ---------------- */
 
+  private buildDesktopMain(): HTMLElement {
+    const main = el('div.chat-main.chat-main-desktop');
+
+    const avatar = el('div.chat-main-avatar');
+
+    this.mainNameEl = el('div.chat-main-name');
+    this.mainStatusEl = el('div.chat-main-status');
+
+    const header = el(
+      'div.chat-main-header',
+      avatar,
+      el('div.chat-main-meta', this.mainNameEl, this.mainStatusEl)
+    );
+
+    this.messagesEl = el('div.chat-messages');
+
+    // 입력 영역
+    this.inputEl = el('input.chat-input-field', {
+      type: 'text',
+      placeholder: 'Type a message...'
+    }) as HTMLInputElement;
+
+    this.inputEl.addEventListener('keydown', (ev: KeyboardEvent) => {
+      if (ev.key === 'Enter' && !ev.shiftKey) {
+        ev.preventDefault();
+        this.sendMessageFromDesktop();
+      }
+    });
+
+    const sendBtn = el(
+      'button.chat-send-btn',
+      el('div.chat-send-btn-icon')
+    ) as HTMLButtonElement;
+
+    sendBtn.addEventListener('click', () => this.sendMessageFromDesktop());
+
+    const inputInner = el(
+      'div.chat-input-inner',
+      this.inputEl,
+      sendBtn
+    );
+
+    const note = el(
+      'div.chat-input-note',
+      'Only persona holders can chat in this room'
+    );
+
+    const inputBar = el('div.chat-input-bar', inputInner, note);
+
+    main.append(header, this.messagesEl, inputBar);
+    return main;
+  }
+
+  private renderCurrentThread() {
     if (!this.currentThread) return;
 
     this.mainNameEl.textContent = this.currentThread.name;
     this.mainStatusEl.textContent = `${this.currentThread.holdersInChat} holders online`;
 
-    this.currentThread.messages.forEach((m) => {
+    // 메시지 리스트 렌더
+    this.renderMessagesInto(this.currentThread, this.messagesEl);
+  }
+
+  private renderMessagesInto(thread: ChatThread, container: HTMLElement) {
+    container.innerHTML = '';
+
+    thread.messages.forEach((m) => {
       const row = el(
         'div.chat-message-row',
         { class: `chat-message-row ${m.sender}` }
@@ -324,22 +312,26 @@ export class ChatTab {
         row.append(bubble, meta);
       }
 
-      this.messagesEl.append(row);
+      container.append(row);
     });
 
-    // 스크롤을 맨 아래로
     requestAnimationFrame(() => {
-      this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+      container.scrollTop = container.scrollHeight;
     });
   }
 
-  /* 메시지 전송 (로컬 state만) */
-  private sendMessage() {
-    if (!this.currentThread || !this.inputEl) return;
+  private sendMessageFromDesktop() {
+    if (!this.currentThread) return;
 
-    const text = (this.inputEl.value as string).trim();
+    const text = this.inputEl.value.trim();
     if (!text) return;
 
+    this.sendMessageCommon(this.currentThread, text);
+    this.inputEl.value = '';
+  }
+
+  /* 공통 전송 로직 (데스크톱 + 모바일 모달에서 둘 다 사용) */
+  private sendMessageCommon(thread: ChatThread, text: string) {
     const now = new Date();
     const time = now.toLocaleTimeString([], {
       hour: 'numeric',
@@ -354,8 +346,128 @@ export class ChatTab {
       time
     };
 
-    this.currentThread.messages.push(msg);
-    this.inputEl.value = '';
-    this.renderCurrentThread();
+    thread.messages.push(msg);
+
+    // 현재 선택 스레드면 데스크톱 UI 갱신
+    if (this.currentThread && this.currentThread.id === thread.id) {
+      this.renderCurrentThread();
+    }
+  }
+
+  /* ---------------- 모바일: ion-modal 채팅방 ---------------- */
+
+  /**
+   * 모바일에서 채팅방을 여는 모달
+   * (PC에서는 호출되지 않음)
+   */
+  private openMobileChatModal(thread: ChatThread) {
+    const modal = el('ion-modal.chat-room-modal') as any;
+
+    /* 헤더 */
+    const closeBtn = el(
+      'ion-button',
+      { slot: 'end', fill: 'clear', onclick: () => modal.dismiss() },
+      '닫기'
+    );
+
+    const header = el(
+      'ion-header',
+      el(
+        'ion-toolbar',
+        el('ion-title', thread.name),
+        el('ion-buttons', { slot: 'end' }, closeBtn)
+      )
+    );
+
+    /* 본문: 데스크톱과 거의 동일한 레이아웃 */
+    const mobileMain = el('div.chat-main chat-main-modal');
+
+    const avatar = el('div.chat-main-avatar');
+
+    const nameEl = el('div.chat-main-name', thread.name);
+    const statusEl = el(
+      'div.chat-main-status',
+      `${thread.holdersInChat} holders online`
+    );
+
+    const mobileHeader = el(
+      'div.chat-main-header',
+      avatar,
+      el('div.chat-main-meta', nameEl, statusEl)
+    );
+
+    const messagesEl = el('div.chat-messages');
+    this.renderMessagesInto(thread, messagesEl);
+
+    // 입력 영역 (ion-input + ion-button)
+    const input = el('ion-input', {
+      placeholder: 'Type a message...',
+      class: 'chat-input-field',
+      'aria-label': 'Message'
+    }) as any;
+
+    const sendBtn = el(
+      'ion-button',
+      { fill: 'solid', shape: 'round' },
+      'Send'
+    ) as any;
+
+    const sendFromModal = async () => {
+      const raw = (await input.getInputElement?.()) as HTMLInputElement | undefined;
+      const value = (raw?.value ?? '').trim();
+      if (!value) return;
+
+      this.sendMessageCommon(thread, value);
+      if (raw) raw.value = '';
+
+      this.renderMessagesInto(thread, messagesEl);
+    };
+
+    sendBtn.onclick = () => sendFromModal();
+
+    // 엔터키 전송 (ion-input 내부 input에 직접 리스너)
+    input.addEventListener('ionInput', async () => {
+      // no-op, 필요하면 디바운스 검색 등에 사용
+    });
+    input.addEventListener('keyup', async (ev: any) => {
+      if (ev.key === 'Enter' && !ev.shiftKey) {
+        ev.preventDefault();
+        await sendFromModal();
+      }
+    });
+
+    const inputInner = el(
+      'div.chat-input-inner',
+      input,
+      el('button.chat-send-btn', { onclick: () => sendFromModal() },
+        el('div.chat-send-btn-icon')
+      )
+    );
+
+    const note = el(
+      'div.chat-input-note',
+      'Only persona holders can chat in this room'
+    );
+
+    const inputBar = el('div.chat-input-bar', inputInner, note);
+
+    mobileMain.append(mobileHeader, messagesEl, inputBar);
+
+    const content = el(
+      'ion-content',
+      { fullscreen: true },
+      mobileMain
+    );
+
+    modal.append(header, content);
+
+    // 모달 DOM에 추가 + 열기
+    document.body.appendChild(modal);
+    modal.present();
+
+    // 닫힌 뒤 DOM에서 제거
+    modal.addEventListener('ionModalDidDismiss', () => {
+      modal.remove();
+    });
   }
 }
