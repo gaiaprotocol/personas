@@ -8,6 +8,10 @@ import './main.css';
 import { openLoginModal } from './modals/login';
 import { ChatTab } from './tabs/chat';
 import { ExploreTab } from './tabs/explore';
+import { FeedTab } from './tabs/feed';
+import { NotificationsTab } from './tabs/notifications';
+import { PostTab } from './tabs/post';
+import { ProfileTab } from './tabs/profile';
 
 setupConfig({ hardwareBackButton: true, experimentalCloseWatcher: true });
 
@@ -38,6 +42,10 @@ const router = new Navigo('/', {
   hash: false, // /#/home 같은 hash 모드 안 쓰고
   linksSelector: 'a[href]', // 기본 값이라 생략해도 됨
 });
+
+// =====================
+//   탭 헬퍼
+// =====================
 
 async function setActiveTab(tabKey: string) {
   const ionTabs = document.querySelector('ion-tabs') as any;
@@ -72,14 +80,45 @@ function setupRoutes() {
     setActiveTab('home');
   });
 
-  // 예시: explore 디테일 라우트 (원하면)
-  // /explore/123 이런거
-  // router.on('/explore/:id', ({ data }) => {
-  //   setActiveTab('explore');
-  //   openPersonaDetail(data.id);  // 여기에 실제 로직
-  // });
+  // =========================
+  //   디테일 라우트들
+  // =========================
 
-  // not found → home
+  // /profile/:id → Profile 탭 활성화 + profile-tab-content에 렌더
+  router.on('/profile/:id', (match: any) => {
+    const { id } = match.data || {};
+
+    // 1) 프로필 탭 활성화
+    setActiveTab('profile');
+
+    // 2) 해당 탭 content에 ProfileTab 렌더
+    const profileContent = document.getElementById('profile-tab-content');
+    if (profileContent) {
+      profileContent.innerHTML = ''; // 기존 내용 제거 (선택)
+      const profileTab = new ProfileTab(); // id를 쓰고 싶으면 생성자/메서드에 넘기면 됨
+      // 예: const profileTab = new ProfileTab(id);
+      profileContent.appendChild(profileTab.el);
+    }
+  });
+
+  // /post/:id → Post 탭 활성화 + post-tab-content에 렌더
+  router.on('/post/:id', (match: any) => {
+    const { id } = match.data || {};
+
+    // 1) 포스트 탭 활성화
+    setActiveTab('post');
+
+    // 2) 해당 탭 content에 PostTab 렌더
+    const postContent = document.getElementById('post-tab-content');
+    if (postContent) {
+      postContent.innerHTML = ''; // 기존 내용 제거 (선택)
+      const postTab = new PostTab(); // 필요하면 id 전달
+      // 예: const postTab = new PostTab(id);
+      postContent.appendChild(postTab.el);
+    }
+  });
+
+  // not found → home (혹은 원하면 별도의 404 페이지로)
   router.notFound(() => {
     setActiveTab('home');
   });
@@ -87,6 +126,10 @@ function setupRoutes() {
   // 현재 URL 기준으로 매칭
   router.resolve();
 }
+
+// =====================
+//  초기 DOM 세팅
+// =====================
 
 document.addEventListener('DOMContentLoaded', () => {
   setupRoutes();
@@ -139,16 +182,34 @@ document.addEventListener('DOMContentLoaded', () => {
     exploreContent.appendChild(exploreTab.el);
   }
 
-  // 필요하면 나중에 Feed 탭 content도 이런 식으로 mount 가능:
-  // const feedContent = document.getElementById('feed-tab-content');
-  // if (feedContent) {
-  //   const feedTab = new FeedTab();
-  //   feedContent.appendChild(feedTab.el);
-  // }
+  const feedContent = document.getElementById('feed-tab-content');
+  if (feedContent) {
+    const feedTab = new FeedTab();
+    feedContent.appendChild(feedTab.el);
+  }
 
   const chatContent = document.getElementById('chat-tab-content');
   if (chatContent) {
     const chatTab = new ChatTab();
     chatContent.appendChild(chatTab.el);
+  }
+
+  const notificationsContent = document.getElementById('notifications-tab-content');
+  if (notificationsContent) {
+    const notificationsTab = new NotificationsTab();
+    notificationsContent.appendChild(notificationsTab.el);
+  }
+
+  // 필요하다면 기본 프로필/포스트 탭 내용도 초기 렌더 가능
+  const profileContent = document.getElementById('profile-tab-content');
+  if (profileContent) {
+    const profileTab = new ProfileTab();
+    profileContent.appendChild(profileTab.el);
+  }
+
+  const postContent = document.getElementById('post-tab-content');
+  if (postContent) {
+    const postTab = new PostTab();
+    postContent.appendChild(postTab.el);
   }
 });

@@ -12,8 +12,6 @@ const bottomBar = h(
       {
         tab: tab.key,
         'data-tab': tab.key,
-        // 기본 활성 탭: home
-        'aria-selected': index === 0 ? 'true' : 'false',
       },
       h('ion-icon', { name: tab.icon }),
       h('ion-label', tab.label),

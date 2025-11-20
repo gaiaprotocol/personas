@@ -1,0 +1,275 @@
+:root {
+  --bg-page: #000000;
+  --bg-card: #111111;
+  --bg-card-hover: #1a1a1a;
+  --border-color: #222222;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --accent-yellow: #f4d03f;
+  --accent-green: #2ecc71;
+  --accent-blue: #1da1f2;
+}
+
+/* 전체 레이아웃 */
+.feed-wrapper {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 2rem 1.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-sizing: border-box;
+}
+
+.feed-inner {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* 헤더 */
+.feed-header {
+  padding-bottom: 1rem;
+}
+
+.feed-header-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.feed-header-sub {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* 구분선 */
+.feed-divider {
+  height: 1px;
+  background: #181818;
+  margin: 1rem 0;
+}
+
+/* ---------------- 작성 폼 (Composer) ---------------- */
+
+.feed-composer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 1rem 0 0.5rem;
+}
+
+.feed-composer-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.feed-composer-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 텍스트 입력 */
+.feed-composer-input {
+  width: 100%;
+  min-height: 56px;
+  max-height: 180px;
+  border-radius: 12px;
+  border: none;
+  outline: none;
+  resize: vertical;
+  padding: 0.75rem 0.9rem;
+  box-sizing: border-box;
+  background: #111;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: inherit;
+}
+
+.feed-composer-input::placeholder {
+  color: #555;
+}
+
+/* 하단 액션 바 */
+.feed-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+.feed-composer-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: #777;
+}
+
+.feed-composer-counter {
+  font-variant-numeric: tabular-nums;
+}
+
+.feed-composer-counter.over {
+  color: #ff4d4f;
+}
+
+/* Post 버튼 */
+.feed-composer-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--accent-blue);
+  color: #fff;
+  transition: background 0.15s ease, transform 0.05s ease;
+}
+
+.feed-composer-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  transform: none;
+}
+
+.feed-composer-btn:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+/* ---------------- 피드 리스트 ---------------- */
+
+.feed-list {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 개별 포스트 */
+.feed-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid #181818;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.feed-item:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.feed-item-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.feed-item-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.feed-item-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.feed-item-author {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.feed-item-handle {
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.feed-item-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #555;
+}
+
+.feed-item-time {
+  font-size: 0.78rem;
+  color: #777;
+}
+
+.feed-item-body {
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+/* 액션 바 (댓글/리포스트/좋아요) */
+.feed-item-actions {
+  display: flex;
+  gap: 2rem;
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.feed-item-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.feed-item-action:hover {
+  color: #aaa;
+}
+
+.feed-item-like.liked {
+  color: var(--accent-green);
+}
+
+/* 작은 원 아이콘 느낌 */
+.feed-item-action-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .feed-wrapper {
+    padding: 1.5rem 1rem;
+  }
+
+  .feed-inner {
+    max-width: 100%;
+  }
+
+  .feed-item-actions {
+    gap: 1.5rem;
+  }
+}

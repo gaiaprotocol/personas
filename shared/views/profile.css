@@ -1,0 +1,279 @@
+/* ===== 전체 레이아웃 ===== */
+.profile-wrapper {
+  background: #000;
+  color: #fff;
+  min-height: 100vh;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.profile-inner {
+  max-width: 960px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ===== 상단 히어로 영역 ===== */
+.profile-hero {
+  position: relative;
+}
+
+/* 회색 배너 영역 (이미지 들어갈 자리) */
+.profile-cover {
+  background: #111;
+  border-radius: 16px;
+  height: 170px;
+}
+
+/* Edit Profile 버튼 */
+.profile-edit-btn {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: #00b894;
+  color: #000;
+  font-weight: 600;
+  border: none;
+  border-radius: 999px;
+  padding: 0.45rem 1.1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.profile-edit-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* ===== 공통 카드 ===== */
+.profile-card {
+  background: #050505;
+  border-radius: 16px;
+  border: 1px solid #1b1b1b;
+  padding: 1.5rem;
+}
+
+/* 메인 프로필 카드 (배너 위로 떠 있는 블럭) */
+.profile-main-card {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: -46px;
+  background: #050505;
+  border-radius: 18px;
+  padding: 1.5rem 1.75rem;
+}
+
+/* 메인 카드가 겹치는 만큼 아래 여백 */
+.profile-content-offset {
+  margin-top: 64px;
+}
+
+/* ===== 프로필 기본 정보 ===== */
+.profile-main {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.profile-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  font-size: 1.8rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-main-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.profile-name {
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.profile-bio {
+  color: #b3b3b3;
+  font-size: 0.95rem;
+}
+
+.profile-address {
+  margin-top: 0.2rem;
+  color: #777;
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+/* ===== 통계 카드 ===== */
+.profile-stats-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.profile-stat-card {
+  flex: 1;
+  background: #050505;
+  border-radius: 16px;
+  padding: 1.1rem 0.9rem;
+  text-align: center;
+  border: 1px solid #101010;
+}
+
+.profile-stat-label {
+  color: #888;
+  font-size: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+
+.profile-stat-value {
+  font-weight: 700;
+  color: #ffd400;
+  font-size: 1.2rem;
+}
+
+/* ===== 소셜 링크 카드 ===== */
+.profile-connect-card {
+  max-width: 640px;
+  margin: 1.25rem auto 0;
+}
+
+.profile-section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.profile-social-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.profile-social-row {
+  background: #090909;
+  border-radius: 12px;
+  padding: 0.82rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #181818;
+  cursor: pointer;
+  text-decoration: none;
+  color: #fff;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.profile-social-row:hover {
+  background: #141414;
+  border-color: #2a2a2a;
+}
+
+.profile-social-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+/* ion-icon 공통 스타일 */
+.profile-social-icon,
+.profile-social-open-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-social-icon {
+  font-size: 1.25rem;
+}
+
+.profile-social-label {
+  font-size: 0.95rem;
+}
+
+.profile-social-open-icon {
+  font-size: 0.95rem;
+  color: #888;
+}
+
+/* ===== Recent Posts 카드 ===== */
+.profile-posts-card {
+  margin-top: 1.5rem;
+}
+
+.profile-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+
+.profile-posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.profile-post-row {
+  border-top: 1px solid #111;
+  padding-top: 0.85rem;
+}
+
+.profile-post-content {
+  font-size: 0.95rem;
+}
+
+.profile-post-meta {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  color: #888;
+}
+
+/* ===== 모바일 ===== */
+@media (max-width: 600px) {
+  .profile-wrapper {
+    padding: 1rem;
+  }
+
+  .profile-inner {
+    padding: 0;
+  }
+
+  .profile-cover {
+    border-radius: 0 0 16px 16px;
+  }
+
+  .profile-main-card {
+    left: 12px;
+    right: 12px;
+    padding: 1.25rem 1.2rem;
+  }
+
+  .profile-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-stats-row {
+    flex-direction: column;
+    margin-top: 4rem;
+  }
+
+  .profile-connect-card {
+    margin-top: 1rem;
+  }
+}

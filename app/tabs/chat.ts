@@ -363,24 +363,29 @@ export class ChatTab {
   private openMobileChatModal(thread: ChatThread) {
     const modal = el('ion-modal.chat-room-modal') as any;
 
-    /* 헤더 */
-    const closeBtn = el(
+    /** 🎯 왼쪽 상단 뒤로가기 버튼 */
+    const backBtn = el(
       'ion-button',
-      { slot: 'end', fill: 'clear', onclick: () => modal.dismiss() },
-      '닫기'
+      {
+        slot: 'start',
+        fill: 'clear',
+        onclick: () => modal.dismiss()
+      },
+      el('ion-icon', { name: 'chevron-back-outline' })
     );
 
+    /** 상단 헤더 (타이틀 + 뒤로가기) */
     const header = el(
       'ion-header',
       el(
         'ion-toolbar',
-        el('ion-title', thread.name),
-        el('ion-buttons', { slot: 'end' }, closeBtn)
+        backBtn,
+        el('ion-title', thread.name)
       )
     );
 
-    /* 본문: 데스크톱과 거의 동일한 레이아웃 */
-    const mobileMain = el('div.chat-main chat-main-modal');
+    /** 본문: 데스크톱과 비슷한 레이아웃 */
+    const mobileMain = el('div.chat-main.chat-main-modal');
 
     const avatar = el('div.chat-main-avatar');
 
@@ -399,18 +404,12 @@ export class ChatTab {
     const messagesEl = el('div.chat-messages');
     this.renderMessagesInto(thread, messagesEl);
 
-    // 입력 영역 (ion-input + ion-button)
+    // 입력 영역 (ion-input + 일반 버튼 조합)
     const input = el('ion-input', {
       placeholder: 'Type a message...',
       class: 'chat-input-field',
       'aria-label': 'Message'
     }) as any;
-
-    const sendBtn = el(
-      'ion-button',
-      { fill: 'solid', shape: 'round' },
-      'Send'
-    ) as any;
 
     const sendFromModal = async () => {
       const raw = (await input.getInputElement?.()) as HTMLInputElement | undefined;
@@ -423,12 +422,6 @@ export class ChatTab {
       this.renderMessagesInto(thread, messagesEl);
     };
 
-    sendBtn.onclick = () => sendFromModal();
-
-    // 엔터키 전송 (ion-input 내부 input에 직접 리스너)
-    input.addEventListener('ionInput', async () => {
-      // no-op, 필요하면 디바운스 검색 등에 사용
-    });
     input.addEventListener('keyup', async (ev: any) => {
       if (ev.key === 'Enter' && !ev.shiftKey) {
         ev.preventDefault();
@@ -436,12 +429,16 @@ export class ChatTab {
       }
     });
 
+    const sendBtn = el(
+      'button.chat-send-btn',
+      { onclick: () => sendFromModal() },
+      el('div.chat-send-btn-icon')
+    );
+
     const inputInner = el(
       'div.chat-input-inner',
       input,
-      el('button.chat-send-btn', { onclick: () => sendFromModal() },
-        el('div.chat-send-btn-icon')
-      )
+      sendBtn
     );
 
     const note = el(

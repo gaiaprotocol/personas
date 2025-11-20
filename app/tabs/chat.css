@@ -313,8 +313,21 @@
   height: 100%;
 }
 
-/* ion-modal 자체에 대한 기본 커스터마이징 (원하면 더 조정 가능) */
+/* ion-modal 자체에 대한 기본 커스터마이징 */
 ion-modal.chat-room-modal {
   --background: #050505;
   --border-radius: 18px;
+}
+
+.chat-room-modal ion-toolbar {
+  --background: #050505;
+  --color: #ffffff;
+}
+
+.chat-room-modal ion-title {
+  text-align: center;
+}
+
+.chat-room-modal ion-button[slot="start"] {
+  margin-left: 8px;
 }
