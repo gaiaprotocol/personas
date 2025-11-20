@@ -76,7 +76,11 @@ export function profile(b: AnyBuilder) {
   // ===== Hero / 메인 프로필 카드 =====
   const editButton = b(
     "button.profile-edit-btn",
-    { type: "button" },
+    {
+      type: "button",
+      "data-action": "edit-profile",
+      "data-address": profileData.address
+    },
     "Edit Profile"
   );
 

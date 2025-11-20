@@ -5,6 +5,7 @@ import '@shoelace-style/shoelace';
 import Navigo from 'navigo';
 import { tabConfig } from '../shared/tab-config';
 import './main.css';
+import { createEditProfileModal } from './modals/edit-profile';
 import { openLoginModal } from './modals/login';
 import { AppSettings, createSettingsModal } from './modals/settings';
 import { ChatTab } from './tabs/chat';
@@ -150,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-
   const tabButtons = document.querySelectorAll('#main-tab-bar ion-tab-button');
   tabButtons.forEach((btn) => {
     const tabKey = btn.getAttribute('data-tab');
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       document.body.appendChild(modal);
-      await modal.present();
+      await (modal as any).present();
     });
   });
 
@@ -217,6 +217,28 @@ document.addEventListener('DOMContentLoaded', () => {
         navigate(`/profile/${id}`);
       }
     });
+  });
+
+  // 🔹 Edit Profile 버튼 → 프로필 수정 모달
+  document.body.addEventListener('click', async (event) => {
+    const target = (event.target as HTMLElement).closest(
+      '[data-action="edit-profile"]'
+    ) as HTMLElement | null;
+
+    if (!target) return;
+
+    event.preventDefault();
+
+    const address =
+      target.getAttribute('data-address') ||
+      '0x0000000000000000000000000000000000000000';
+
+    // TODO: 실제 로그인/인증 로직과 연결해서 토큰을 가져오세요.
+    const token = 'TEMP_AUTH_TOKEN';
+
+    const modal = createEditProfileModal(address as `0x${string}`, token);
+    document.body.appendChild(modal);
+    await (modal as any).present();
   });
 
   // =========================
@@ -244,17 +266,5 @@ document.addEventListener('DOMContentLoaded', () => {
   if (notificationsContent) {
     const notificationsTab = new NotificationsTab(navigate);
     notificationsContent.appendChild(notificationsTab.el);
-  }
-
-  const profileContent = document.getElementById('profile-tab-content');
-  if (profileContent) {
-    const profileTab = new ProfileTab(navigate);
-    profileContent.appendChild(profileTab.el);
-  }
-
-  const postContent = document.getElementById('post-tab-content');
-  if (postContent) {
-    const postTab = new PostTab(navigate);
-    postContent.appendChild(postTab.el);
   }
 });
