@@ -3,56 +3,82 @@
    ========================= */
 
 ion-modal.settings-modal {
-  --background: #111111;
+  --border-radius: 16px;
+  --backdrop-opacity: 0.6;
 }
 
+/* 모달 콘텐츠 배경색 / 라운드 유지 */
+ion-modal.settings-modal::part(content) {
+  background: #111;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* 헤더 (위쪽 바) */
 ion-modal.settings-modal ion-toolbar {
-  --background: #111111;
-  --color: #ffffff;
-}
-
-/* 핵심 수정 사항: ion-content에 직접 여백 변수 설정 */
-ion-modal.settings-modal ion-content {
-  --background: #111111;
-  --color: #ffffff;
-
-  /* 상하좌우 여백을 여기서 제어합니다 */
-  --padding-top: 16px;
-  --padding-bottom: 24px;
+  --background: #111;
+  --color: #f5f5f5;
   --padding-start: 20px;
-  /* 좌측 여백 */
-  --padding-end: 20px;
-  /* 우측 여백 */
+  --padding-end: 12px;
+  --min-height: 56px;
 }
 
-/* 기존의 .settings-body 스타일은 제거하거나 불필요해집니다. */
-/* 만약 div 래퍼를 유지한다면 아래처럼 패딩을 없애주세요. */
+ion-modal.settings-modal ion-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* ion-content 기본 padding 제거 */
+ion-modal.settings-modal ion-content {
+  --background: #222;
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+/* 안쪽 여백용 래퍼 */
 ion-modal.settings-modal .settings-body {
-  padding: 0;
-  /* 혹은 width: 100%; 등을 추가하여 안전장치 마련 */
+  padding: 16px 20px 0;
 }
 
+/* 리스트들 사이 간격 */
 ion-modal.settings-modal ion-list {
   margin-bottom: 12px;
   background: transparent;
 }
 
-/* 배경색 문제 방지 (선택사항) */
-ion-modal.settings-modal ion-list,
-ion-modal.settings-modal ion-item {
-  --background: #111111;
-  --color: #ffffff;
+/* 리스트 헤더 스타일 */
+ion-modal.settings-modal ion-list-header {
+  padding-inline-start: 0;
+  padding-inline-end: 0;
+  margin-bottom: 4px;
 }
 
+ion-modal.settings-modal ion-list-header ion-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
+}
+
+/* 아이템 라인 정리 */
+ion-modal.settings-modal ion-item {
+  --background: transparent;
+}
+
+/* Save 버튼 영역 & 버튼 스타일 */
 ion-modal.settings-modal .settings-footer {
-  margin-top: 8px;
+  padding: 12px 20px 24px;
 }
 
 ion-modal.settings-modal .settings-save-btn {
-  --background: #d6b36a;
-  --background-activated: #c8a457;
-  --color: #000000;
-  --border-radius: 8px;
   width: 100%;
   font-weight: 700;
+}
+
+/* 닫기 버튼(아이콘) */
+ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
+  --padding-start: 4px;
+  --padding-end: 4px;
 }

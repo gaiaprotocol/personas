@@ -196,6 +196,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // 🔹 Explore Personas CTA → /explore
+  const exploreButtons = document.querySelectorAll(
+    '[data-action="explore-personas"]'
+  );
+  exploreButtons.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigate('/explore');
+    });
+  });
+
+  // 🔹 Trending Persona 카드 클릭 → /profile/:id
+  const personaCards = document.querySelectorAll('[data-profile-id]');
+  personaCards.forEach((card) => {
+    card.addEventListener('click', (e) => {
+      e.preventDefault();
+      const id = (card as HTMLElement).getAttribute('data-profile-id');
+      if (id) {
+        navigate(`/profile/${id}`);
+      }
+    });
+  });
+
   // =========================
   //   나머지 탭 mount 코드
   // =========================

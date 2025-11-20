@@ -1,6 +1,5 @@
 import { el } from "@webtaku/el";
-
-/* ---------- 타입 정의 ---------- */
+import "./settings.css";
 
 export type AppLanguage = "system" | "en" | "ko";
 
@@ -13,39 +12,45 @@ export interface AppSettings {
   language: AppLanguage;
 }
 
-/* ---------- 설정 모달 ---------- */
-
+/**
+ * 설정 모달 생성 함수
+ */
 export function createSettingsModal(
   initial: AppSettings,
   opts?: {
     onSave?: (next: AppSettings) => void | Promise<void>;
   }
 ): HTMLIonModalElement {
-  // 클래스 부여해서 CSS 스코프 잡기
+  // .settings-modal 클래스로 스코프
   const modal = el("ion-modal.settings-modal") as HTMLIonModalElement;
 
-  /* ── 헤더 ─────────────────────────────────────── */
+  /* ---------- 헤더 ---------- */
 
   const closeBtn = el(
     "ion-button",
     {
-      slot: "end",
       fill: "clear",
+      "aria-label": "Close settings",
       onclick: () => modal.dismiss(),
     },
-    "Close"
-  );
+    // X 아이콘 (전역에서 ion-icon 세팅돼 있어야 함)
+    el("ion-icon", {
+      name: "close-outline",
+      slot: "icon-only",
+    })
+  ) as HTMLIonButtonElement;
 
   const header = el(
     "ion-header",
     el(
       "ion-toolbar",
       el("ion-title", "Settings"),
+      // ✅ slot="end" 는 ion-buttons 에만
       el("ion-buttons", { slot: "end" }, closeBtn)
     )
   );
 
-  /* ── 폼 요소들 ────────────────────────────────── */
+  /* ---------- 폼 요소들 ---------- */
 
   const darkModeToggle = el("ion-toggle", {
     checked: initial.darkMode,
@@ -72,7 +77,6 @@ export function createSettingsModal(
     slot: "end",
   }) as HTMLIonToggleElement;
 
-  // 언어는 select 사용
   const langSelect = el(
     "ion-select",
     {
@@ -86,7 +90,7 @@ export function createSettingsModal(
     el("ion-select-option", { value: "ko" }, "한국어")
   ) as HTMLIonSelectElement;
 
-  /* ── 섹션 구성 ───────────────────────────────── */
+  /* ---------- 섹션 ---------- */
 
   const appearanceGroup = el(
     "ion-list",
@@ -138,7 +142,7 @@ export function createSettingsModal(
     )
   );
 
-  /* ── Save 버튼 ───────────────────────────────── */
+  /* ---------- Save 버튼 ---------- */
 
   const saveBtn = el(
     "ion-button",
@@ -151,29 +155,31 @@ export function createSettingsModal(
   ) as HTMLIonButtonElement;
 
   const footer = el(
-    "div.settings-footer",
+    "div",
+    { className: "settings-footer" },
     saveBtn
   );
 
-  // ✅ ion-content 안에 padding용 래퍼 div 하나 더
+  // ✅ 바디/푸터 래퍼로만 패딩 관리
   const body = el(
-    "div.settings-body",
+    "div",
+    { className: "settings-body" },
     appearanceGroup,
     notificationsGroup,
     emailGroup,
-    languageGroup,
-    footer
+    languageGroup
   );
 
   const content = el(
     "ion-content",
-    null,
-    body
+    {},
+    body,
+    footer
   );
 
   modal.append(header, content);
 
-  /* ── 저장 로직 ───────────────────────────────── */
+  /* ---------- 저장 로직 ---------- */
 
   saveBtn.onclick = async () => {
     const originalText = saveBtn.textContent || "Save changes";

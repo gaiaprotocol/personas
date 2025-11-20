@@ -12,7 +12,7 @@ interface ChatMessage {
 }
 
 interface ChatThread {
-  id: string; // 'alex' | 'luna' | 'noah' -> /profile/:id 에 쓸 예정
+  id: string;
   name: string;
   holdersInChat: number;
   unreadCount: number;
@@ -96,13 +96,15 @@ export class ChatTab {
   private threadListEl!: HTMLElement;
 
   // 데스크톱 채팅 영역 레퍼런스
-  private mainNameEl!: HTMLAnchorElement;
+  private mainNameEl!: HTMLElement;
   private mainStatusEl!: HTMLElement;
   private messagesEl!: HTMLElement;
   private inputEl!: HTMLInputElement;
 
+  // 🔹 추가: 라우팅용 콜백
   private navigate?: (path: string) => void;
 
+  // 🔹 생성자에서 navigate 주입
   constructor(navigate?: (path: string) => void) {
     this.navigate = navigate;
 
@@ -123,14 +125,12 @@ export class ChatTab {
     shell.append(sidebar, desktopMain);
     this.el.append(shell);
 
-    // 메인 헤더 이름 클릭 시 /profile/:id 로 이동
-    if (this.mainNameEl && this.navigate) {
-      this.mainNameEl.addEventListener('click', (e) => {
-        if (!this.currentThread) return;
-        e.preventDefault();
-        this.navigate?.(`/profile/${this.currentThread.id}`);
-      });
-    }
+    // 🔹 상단 유저 이름 클릭 시 /profile/:id 로 이동
+    this.mainNameEl.addEventListener('click', (e) => {
+      if (!this.navigate || !this.currentThread) return;
+      e.preventDefault();
+      this.navigate(`/profile/${this.currentThread.id}`);
+    });
 
     this.renderThreadList();
     this.renderCurrentThread();
@@ -196,19 +196,13 @@ export class ChatTab {
     this.threadListEl.innerHTML = '';
 
     this.filteredThreads.forEach((thread) => {
-      const nameLink = el(
-        'a.chat-thread-name',
-        { href: `/profile/${thread.id}` },
-        thread.name
-      ) as HTMLAnchorElement;
-
       const item = el(
         'div.chat-thread-item',
         { 'data-id': thread.id },
         el('div.chat-thread-avatar', thread.avatarInitial),
         el(
           'div.chat-thread-main',
-          nameLink,
+          el('div.chat-thread-name', thread.name),
           el(
             'div.chat-thread-sub',
             `${thread.holdersInChat} holders in chat`
@@ -223,7 +217,7 @@ export class ChatTab {
         item.classList.add('active');
       }
 
-      // 전체 아이템 클릭 → 채팅 스레드 선택
+      // ✅ 여기서는 "채팅방 선택"만! 프로필로 안 감
       item.addEventListener('click', () => {
         this.currentThread = thread;
         thread.unreadCount = 0;
@@ -237,15 +231,6 @@ export class ChatTab {
         }
       });
 
-      // 이름 링크 클릭 → 프로필로 이동 (SPA 라우팅)
-      if (this.navigate) {
-        nameLink.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation(); // 채팅 선택 클릭과 분리
-          this.navigate?.(`/profile/${thread.id}`);
-        });
-      }
-
       this.threadListEl.append(item);
     });
   }
@@ -257,7 +242,6 @@ export class ChatTab {
 
     const avatar = el('div.chat-main-avatar');
 
-    // 메인 이름을 a 태그로 만들어서 클릭 시 프로필로 이동
     this.mainNameEl = el('a.chat-main-name', { href: '#' }) as HTMLAnchorElement;
     this.mainStatusEl = el('div.chat-main-status');
 
@@ -310,9 +294,7 @@ export class ChatTab {
     if (!this.currentThread) return;
 
     this.mainNameEl.textContent = this.currentThread.name;
-    // href도 같이 업데이트 (직접 클릭해서 이동할 수 있게)
     this.mainNameEl.setAttribute('href', `/profile/${this.currentThread.id}`);
-
     this.mainStatusEl.textContent = `${this.currentThread.holdersInChat} holders online`;
 
     // 메시지 리스트 렌더
@@ -389,14 +371,9 @@ export class ChatTab {
 
   /* ---------------- 모바일: ion-modal 채팅방 ---------------- */
 
-  /**
-   * 모바일에서 채팅방을 여는 모달
-   * (PC에서는 호출되지 않음)
-   */
   private openMobileChatModal(thread: ChatThread) {
     const modal = el('ion-modal.chat-room-modal') as any;
 
-    /** 🎯 왼쪽 상단 뒤로가기 버튼 */
     const backBtn = el(
       'ion-button',
       {
@@ -407,7 +384,6 @@ export class ChatTab {
       el('ion-icon', { name: 'chevron-back-outline' })
     );
 
-    /** 상단 헤더 (타이틀 + 뒤로가기) */
     const header = el(
       'ion-header',
       el(
@@ -417,7 +393,6 @@ export class ChatTab {
       )
     );
 
-    /** 본문: 데스크톱과 비슷한 레이아웃 */
     const mobileMain = el('div.chat-main.chat-main-modal');
 
     const avatar = el('div.chat-main-avatar');
@@ -437,7 +412,6 @@ export class ChatTab {
     const messagesEl = el('div.chat-messages');
     this.renderMessagesInto(thread, messagesEl);
 
-    // 입력 영역 (ion-input + 일반 버튼 조합)
     const input = el('ion-input', {
       placeholder: 'Type a message...',
       class: 'chat-input-field',
@@ -491,11 +465,9 @@ export class ChatTab {
 
     modal.append(header, content);
 
-    // 모달 DOM에 추가 + 열기
     document.body.appendChild(modal);
     modal.present();
 
-    // 닫힌 뒤 DOM에서 제거
     modal.addEventListener('ionModalDidDismiss', () => {
       modal.remove();
     });

@@ -1,70 +1,152 @@
 import { h } from "@webtaku/h";
 
-const homeTab = h(
-  "ion-content.main-content",
-  // ion-content 전체 배경을 검정으로
-  { class: "bg-black" },
-  h(
-    "section",
+const trendingPersonas = [
+  {
+    id: "alex",
+    name: "Alex Chen",
+    address: "0x1234...5678",
+    avatar: "A",
+    price: "$2.45",
+    change: "+12.5%",
+    holders: 342,
+    volume: "$15,420",
+  },
+  {
+    id: "luna",
+    name: "Luna Park",
+    address: "0xabcd...efgh",
+    avatar: "L",
+    price: "$3.82",
+    change: "-5.2%",
+    holders: 521,
+    volume: "$28,500",
+  },
+  {
+    id: "noah",
+    name: "Noah Tech",
+    address: "0x9876...5432",
+    avatar: "N",
+    price: "$1.92",
+    change: "+23.1%",
+    holders: 198,
+    volume: "$8,920",
+  },
+];
+
+function personaCard(p: any) {
+  const isUp = p.change.trim().startsWith("+");
+
+  return h(
+    "div",
     {
-      class:
-        // 헤더 높이 제외하고 세로 가운데 정렬
-        "min-h-[100%] flex items-center justify-center px-4 md:px-8",
+      class: "home-trending-card",
+      href: `/profile/${p.id}`,      // ← 🔧 링크 추가
+      "data-profile-id": p.id,       // SPA 이동용
     },
-    // 실제 콘텐츠 폭을 제한해서 가운데 정렬
+
+    // Header
     h(
       "div",
+      { class: "home-card-header" },
+      h("div", { class: "home-card-avatar" }, p.avatar),
+      h(
+        "div",
+        { class: "home-card-meta" },
+        h("div", { class: "home-card-name" }, p.name),
+        h("div", { class: "home-card-address" }, p.address)
+      )
+    ),
+
+    // Price
+    h("div", { class: "home-card-price-label" }, "Price"),
+    h("div", { class: "home-card-price-value" }, p.price),
+
+    // Stat Row
+    h(
+      "div",
+      { class: "home-card-stats-row" },
+      h(
+        "div",
+        {},
+        h("div", { class: "home-card-stat-label" }, "24h Change"),
+        h(
+          "div",
+          {
+            class:
+              "home-card-stat-value " +
+              (isUp ? "home-card-change-up" : "home-card-change-down"),
+          },
+          p.change
+        )
+      ),
+      h(
+        "div",
+        {},
+        h("div", { class: "home-card-stat-label" }, "Holders"),
+        h("div", { class: "home-card-stat-value" }, String(p.holders))
+      )
+    ),
+
+    // Divider
+    h("div", { class: "home-card-divider" }),
+
+    // Volume
+    h(
+      "div",
+      {},
+      h("div", { class: "home-card-volume-label" }, "24h Volume"),
+      h("div", { class: "home-card-volume-value" }, p.volume)
+    ),
+
+    // Button (여기서도 프로필/트레이드로 가고 싶으면 data-action 추가해서 써도 됨)
+    h(
+      "button",
       {
-        class:
-          "w-full max-w-4xl mx-auto text-center",
+        class: "home-card-button",
+        "data-action": "buy-fragments",
+        type: "button",
       },
-      // 타이틀
+      "Buy Fragments"
+    )
+  );
+}
+
+export const homeTab = h(
+  "ion-content.main-content",
+  { class: "home-root" },
+
+  /** ===== Hero Section ===== **/
+  h(
+    "section",
+    { class: "home-hero-section" },
+    h(
+      "div",
+      { class: "home-hero-inner" },
       h(
         "h1",
-        {
-          class:
-            "text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight " +
-            "text-gray-100 mb-6",
-        },
+        { class: "home-hero-title" },
         "Trade Your ",
-        h('span', { style: 'color: var(--sl-color-primary-600)' }, 'Identity')
+        h("span", null, "Identity")
       ),
-
-      // 서브 카피
       h(
         "p",
-        {
-          class:
-            "max-w-2xl mx-auto text-base md:text-lg text-gray-400 mb-10 " +
-            "leading-relaxed",
-        },
+        { class: "home-hero-subtitle" },
         "Buy persona fragments on bonding curves, build your unique identity, ",
         "and earn from your community."
       ),
-
-      // 버튼 그룹
       h(
         "div",
-        {
-          class:
-            "flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center",
-        },
-        // Start Trading 버튼 (여기에만 브랜드 컬러 적용)
+        { class: "home-hero-actions" },
         h(
           "sl-button#start-trading",
           {
             variant: "primary",
             size: "large",
             pill: "",
-            class:
-              "font-semibold shadow-lg " +
-              "focus-visible:outline-none focus-visible:ring-2 " +
-              "focus-visible:ring-offset-2 focus-visible:ring-offset-black",
             "data-action": "start-trading",
           },
           "Start Trading"
         ),
-        // Learn More 버튼 (기본 테마 사용 → hover 시 노랗게 안 변함)
         h(
           "sl-button",
           {
@@ -72,19 +154,47 @@ const homeTab = h(
             size: "large",
             outline: "",
             pill: "",
-            class:
-              "font-semibold text-gray-100 border-gray-600 " +
-              "focus-visible:outline-none focus-visible:ring-2 " +
-              "focus-visible:ring-offset-2 focus-visible:ring-offset-black",
             "data-action": "learn-more",
-            href: 'https://gaia-protocol.notion.site/What-Is-Gaia-Personas-2afb34b198408064bdcbddd898772c0b',
-            target: '_blank'
+            href: "https://gaia-protocol.notion.site/What-Is-Gaia-Personas-2afb34b198408064bdcbddd898772c0b",
+            target: "_blank",
           },
           "Learn More"
         )
       )
     )
   ),
-);
 
-export { homeTab };
+  /** ===== Trending Personas Section ===== **/
+  h(
+    "section",
+    { class: "home-trending-section" },
+    h("h2", { class: "home-trending-title" }, "Trending Personas"),
+    h(
+      "div",
+      { class: "home-trending-grid" },
+      ...trendingPersonas.map(personaCard)
+    )
+  ),
+
+  /** ===== CTA Explore Section ===== **/
+  h(
+    "section",
+    { class: "home-cta-section" },
+    h("h3", { class: "home-cta-title" }, "Ready to Explore?"),
+    h(
+      "p",
+      { class: "home-cta-text" },
+      "Discover unique personas and start building your portfolio."
+    ),
+    h(
+      "a",
+      {
+        class: "home-cta-button",
+        "data-action": "explore-personas",
+        type: "button",
+        href: "/explore",            // ← 🔧 추가
+      },
+      "Explore Personas"
+    )
+  )
+);

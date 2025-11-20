@@ -151,3 +151,275 @@ ion-modal ion-content {
     display: none;
   }
 }
+
+:root {
+  --home-bg: #000;
+  --home-text: #fff;
+  --home-text-subtle: #9ca3af;
+  --home-card-bg: #111;
+  --home-card-bg-hover: #1a1a1a;
+  --home-card-border: #222;
+  --home-accent-yellow: #f4d03f;
+  --home-accent-green: #2ecc71;
+  --home-accent-red: #ff4d4f;
+  --home-accent-teal: #006d75;
+}
+
+/* ion-content 전체 */
+.home-root {
+  --background: var(--home-bg);
+  background: var(--home-bg);
+  color: var(--home-text);
+}
+
+/* ===== Hero ===== */
+
+.home-hero-section {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+}
+
+.home-hero-inner {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.home-hero-title {
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #f3f4f6;
+  margin-bottom: 1.5rem;
+}
+
+.home-hero-title span {
+  color: var(--sl-color-primary-600, #c1a87d);
+}
+
+.home-hero-subtitle {
+  max-width: 640px;
+  margin: 0 auto 2.5rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--home-text-subtle);
+}
+
+.home-hero-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  justify-content: center;
+  align-items: stretch;
+}
+
+@media (min-width: 640px) {
+  .home-hero-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+/* ===== Trending Personas ===== */
+
+.home-trending-section {
+  margin-top: 3rem;
+  padding: 0 1.5rem 0;
+  max-width: 1120px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.home-trending-title {
+  font-size: 1.9rem;
+  font-weight: 800;
+  margin-bottom: 2rem;
+}
+
+.home-trending-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+@media (max-width: 960px) {
+  .home-trending-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .home-trending-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 카드 */
+
+.home-trending-card {
+  background: var(--home-card-bg);
+  border-radius: 18px;
+  border: 1px solid var(--home-card-border);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.05s ease;
+}
+
+.home-trending-card:hover {
+  background: var(--home-card-bg-hover);
+  border-color: #333;
+  transform: translateY(-2px);
+}
+
+.home-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.home-card-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-weight: 700;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-card-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-card-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.home-card-address {
+  font-size: 0.75rem;
+  color: var(--home-text-subtle);
+}
+
+/* 가격/지표 */
+
+.home-card-price-label {
+  font-size: 0.8rem;
+  color: var(--home-text-subtle);
+}
+
+.home-card-price-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--home-accent-yellow);
+}
+
+.home-card-stats-row {
+  display: flex;
+  margin-top: 0.5rem;
+  gap: 2rem;
+  font-size: 0.8rem;
+}
+
+.home-card-stat-label {
+  color: var(--home-text-subtle);
+}
+
+.home-card-stat-value {
+  margin-top: 0.2rem;
+  font-weight: 500;
+}
+
+.home-card-change-up {
+  color: var(--home-accent-green);
+}
+
+.home-card-change-down {
+  color: var(--home-accent-red);
+}
+
+.home-card-divider {
+  border-top: 1px solid #1b1b1b;
+  margin: 0.8rem 0;
+}
+
+.home-card-volume-label {
+  font-size: 0.8rem;
+  color: var(--home-text-subtle);
+}
+
+.home-card-volume-value {
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.home-card-button {
+  margin-top: 1rem;
+  border: none;
+  border-radius: 999px;
+  background: #004c55;
+  color: #fff;
+  padding: 0.55rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.home-card-button:hover {
+  background: var(--home-accent-teal);
+}
+
+/* ===== CTA 섹션 ===== */
+
+.home-cta-section {
+  margin-top: 4rem;
+  text-align: center;
+  width: 100%;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 3rem 1rem;
+  margin-bottom: 4rem;
+}
+
+.home-cta-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 0.7rem;
+}
+
+.home-cta-text {
+  font-size: 0.95rem;
+  color: var(--home-text-subtle);
+  margin-bottom: 1.8rem;
+}
+
+.home-cta-button {
+  border: none;
+  border-radius: 999px;
+  background: var(--home-accent-yellow);
+  color: #000;
+  padding: 0.8rem 2.5rem;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.home-cta-button:hover {
+  background: #ffdf59;
+}
