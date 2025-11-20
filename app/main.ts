@@ -6,6 +6,7 @@ import Navigo from 'navigo';
 import { tabConfig } from '../shared/tab-config';
 import './main.css';
 import { openLoginModal } from './modals/login';
+import { ChatTab } from './tabs/chat';
 import { ExploreTab } from './tabs/explore';
 
 setupConfig({ hardwareBackButton: true, experimentalCloseWatcher: true });
@@ -144,4 +145,10 @@ document.addEventListener('DOMContentLoaded', () => {
   //   const feedTab = new FeedTab();
   //   feedContent.appendChild(feedTab.el);
   // }
+
+  const chatContent = document.getElementById('chat-tab-content');
+  if (chatContent) {
+    const chatTab = new ChatTab();
+    chatContent.appendChild(chatTab.el);
+  }
 });
