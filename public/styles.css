@@ -2756,7 +2756,7 @@ img.jazzicon {
   position: absolute;
   left: 20px;
   right: 20px;
-  bottom: -46px;
+  top: 60px;
   background: #050505;
   border-radius: 18px;
   padding: 1.5rem 1.75rem;
@@ -4595,6 +4595,20 @@ ion-modal.chat-room-modal {
 
 .chat-room-modal ion-button[slot="start"] {
   margin-left: 8px;
+}
+.user-profile-modal .user-profile-modal-body {
+  /* 모달 안에서 조금 여백만 조정하고 싶을 때 */
+  padding-top: 0;
+}
+
+.user-profile-modal ion-content {
+  --background: #000;
+}
+
+/* 필요하면 헤더도 다크 스타일로 */
+.user-profile-modal ion-toolbar {
+  --background: #000;
+  --color: #fff;
 }
 :root {
   --bg-page: #000000;

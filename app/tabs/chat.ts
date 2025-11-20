@@ -1,5 +1,6 @@
 import { el } from '@webtaku/el';
 import './chat.css';
+import { createUserProfileModal } from '../modals/profile';
 
 type Sender = 'you' | 'other';
 
@@ -408,6 +409,14 @@ export class ChatTab {
       avatar,
       el('div.chat-main-meta', nameEl, statusEl)
     );
+
+    avatar.addEventListener('click', () => {
+      createUserProfileModal(thread.id, this.navigate);
+    });
+
+    nameEl.addEventListener('click', () => {
+      createUserProfileModal(thread.id, this.navigate);
+    });
 
     const messagesEl = el('div.chat-messages');
     this.renderMessagesInto(thread, messagesEl);
