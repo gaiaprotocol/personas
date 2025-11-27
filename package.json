@@ -11,7 +11,7 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "@gaiaprotocol/client-common": "^0.0.14",
+    "@gaiaprotocol/client-common": "^0.0.15",
     "@ionic/core": "^8.7.11",
     "@tanstack/react-query": "^5.90.11",
     "@webtaku/el": "^0.1.1",
