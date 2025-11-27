@@ -3,7 +3,7 @@ import { signMessage as wagmiSignMessage } from '@wagmi/core';
 import { createSiweMessage as viemCreateSiweMessage } from 'viem/siwe';
 import { MESSAGE_FOR_WALLET_LOGIN } from '../vars';
 
-declare const API_BASE_URI: string;
+declare const GAIA_API_BASE_URI: string;
 
 function createSiweMessage(address: `0x${string}`, nonce: string, issuedAt: string) {
   return viemCreateSiweMessage({
@@ -20,7 +20,7 @@ function createSiweMessage(address: `0x${string}`, nonce: string, issuedAt: stri
 
 async function signMessage(address: `0x${string}`): Promise<`0x${string}`> {
   const response = await fetch(
-    `${API_BASE_URI}/nonce`,
+    `${GAIA_API_BASE_URI}/nonce`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

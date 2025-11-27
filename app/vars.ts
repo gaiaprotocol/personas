@@ -1,4 +1,4 @@
-export const MESSAGE_FOR_WALLET_LOGIN = 'Please sign this message to log in to Gaia Personas.';
+export const MESSAGE_FOR_WALLET_LOGIN = 'Please sign this message to log in to Gaia Protocol.';
 
 export const PERSONA_FRAGMENTS_ADDRESS =
   process.env.NODE_ENV === 'production' ?
