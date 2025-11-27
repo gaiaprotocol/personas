@@ -20,10 +20,12 @@
     "skipLibCheck": true,
     "strict": true,
     "rootDir": "./",
-    "outDir": "dist"
+    "outDir": "dist",
+    "resolveJsonModule": true
   },
   "include": [
     "./app",
+    "./app/contracts/*.json",
     "./shared/**/*",
     "./shared/**/*.json",
     "./public/**/*.json"

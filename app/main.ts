@@ -4,6 +4,7 @@ import { defineCustomElements } from '@ionic/core/loader';
 import '@shoelace-style/shoelace';
 import Navigo from 'navigo';
 import { tabConfig } from '../shared/tab-config';
+import { test } from './contracts/persona-fragments';
 import './main.css';
 import { createEditProfileModal } from './modals/edit-profile';
 import { openLoginModal } from './modals/login';
@@ -267,4 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const notificationsTab = new NotificationsTab(navigate);
     notificationsContent.appendChild(notificationsTab.el);
   }
+
+  test()
 });
