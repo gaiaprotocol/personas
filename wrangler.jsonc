@@ -18,11 +18,25 @@
 	},
 	"env": {
 		"development": {
+			"assets": {
+				"directory": "./public-dev",
+				"not_found_handling": "single-page-application",
+				"run_worker_first": [
+					"/api/*"
+				]
+			},
 			"vars": {
 				"ENV_TYPE": "dev"
 			}
 		},
 		"testnet": {
+			"assets": {
+				"directory": "./public-testnet",
+				"not_found_handling": "single-page-application",
+				"run_worker_first": [
+					"/api/*"
+				]
+			},
 			"vars": {
 				"ENV_TYPE": "testnet"
 			}
