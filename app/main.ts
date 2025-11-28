@@ -176,24 +176,23 @@ document.addEventListener('DOMContentLoaded', () => {
     language: 'system',
   };
 
+  const settingsModal = createSettingsModal(currentSettings, {
+    async onSave(next) {
+      // 1) 메모리 상의 설정 업데이트
+      currentSettings = next;
+
+      // 2) 필요하면 여기서 persist
+      // localStorage.setItem('app-settings', JSON.stringify(next));
+      // 또는 서버로 PATCH /settings 호출 등
+    },
+  });
+  document.body.appendChild(settingsModal);
+
   const settingsBtns = document.querySelectorAll('#open-settings');
   settingsBtns.forEach((btn) => {
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
-
-      const modal = createSettingsModal(currentSettings, {
-        async onSave(next) {
-          // 1) 메모리 상의 설정 업데이트
-          currentSettings = next;
-
-          // 2) 필요하면 여기서 persist
-          // localStorage.setItem('app-settings', JSON.stringify(next));
-          // 또는 서버로 PATCH /settings 호출 등
-        },
-      });
-
-      document.body.appendChild(modal);
-      await (modal as any).present();
+      await settingsModal.present();
     });
   });
 
