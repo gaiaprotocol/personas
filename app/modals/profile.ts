@@ -2,10 +2,13 @@ import { el } from '@webtaku/el';
 import { profile as profileTemplate } from '../../shared/views/profile'; // (builder, profile, posts)
 import './profile.css';
 
-// 실제 타입
 import type { PersonaPost } from '../../shared/types/post';
 import type { Profile } from '../../shared/types/profile';
 import { fetchProfileWithPosts } from '../api/profile';
+
+import { tokenManager } from '@gaiaprotocol/client-common';
+import { getAddress } from 'viem';
+import { profileManager } from '../services/profile-manager';
 
 /* =========================
  *   헬퍼
@@ -17,22 +20,19 @@ function shortenAddress(addr: string, head = 6, tail = 4) {
 }
 
 /** 서버 Profile + Posts → 뷰모델 */
-function toUserProfileData(
-  profile: Profile,
-  posts: PersonaPost[],
-) {
+function toUserProfileData(profile: Profile, posts: PersonaPost[]) {
   const name =
     profile.nickname?.trim().length
       ? profile.nickname
       : shortenAddress(profile.account);
 
   const avatarInitial =
-    (profile.nickname?.trim()[0] ??
+    (
+      profile.nickname?.trim()[0] ??
       profile.account.replace(/^0x/, '')[0] ??
       'P'
     ).toUpperCase();
 
-  // TODO: 실제 시스템에 맞게 가공
   const mappedPosts = posts.map((post, idx) => {
     const p: any = post;
     const content = p.content ?? p.text ?? '[No content]';
@@ -51,7 +51,9 @@ function toUserProfileData(
         else if (diff < 3600) timeAgo = `${Math.floor(diff / 60)}m ago`;
         else if (diff < 86400) timeAgo = `${Math.floor(diff / 3600)}h ago`;
         else timeAgo = `${Math.floor(diff / 86400)}d ago`;
-      } catch { }
+      } catch {
+        // ignore
+      }
     }
 
     return {
@@ -72,11 +74,15 @@ function toUserProfileData(
 }
 
 /** DOM 반영 */
-function applyProfileData(root: HTMLElement, data: ReturnType<typeof toUserProfileData>) {
+function applyProfileData(
+  root: HTMLElement,
+  data: ReturnType<typeof toUserProfileData>,
+) {
   // 이름 / 바이오 / 주소
   root.querySelector<HTMLElement>('.profile-name')!.textContent = data.name;
   root.querySelector<HTMLElement>('.profile-bio')!.textContent = data.bio;
-  root.querySelector<HTMLElement>('.profile-address')!.textContent = data.address;
+  root.querySelector<HTMLElement>('.profile-address')!.textContent =
+    data.address;
 
   const avatar = root.querySelector<HTMLElement>('.profile-avatar')!;
   avatar.textContent = data.avatarInitial;
@@ -99,7 +105,11 @@ function applyProfileData(root: HTMLElement, data: ReturnType<typeof toUserProfi
 }
 
 /** 내부 링크를 SPA 라우터로 연결 */
-function setupInternalLinks(root: HTMLElement, modal: HTMLIonModalElement, navigate?: (path: string) => void) {
+function setupInternalLinks(
+  root: HTMLElement,
+  modal: HTMLIonModalElement,
+  navigate?: (path: string) => void,
+) {
   if (!navigate) return;
 
   root.querySelectorAll<HTMLAnchorElement>('a[href^="/"]').forEach((link) => {
@@ -122,7 +132,7 @@ export function createUserProfileModal(
   profileId: string,
   navigate?: (path: string) => void,
 ) {
-  const modal = el('ion-modal.user-profile-modal');
+  const modal = el('ion-modal.user-profile-modal') as HTMLIonModalElement;
 
   /* -------------------------
    *     Header
@@ -166,14 +176,19 @@ export function createUserProfileModal(
     'ion-content',
     { fullscreen: true },
     loadingEl,
-  );
+  ) as HTMLIonContentElement;
 
   modal.append(header, content);
 
   document.body.appendChild(modal);
-  modal.present();
+  (modal as any).present();
 
-  modal.addEventListener('ionModalDidDismiss', () => modal.remove());
+  let unsubscribe: (() => void) | null = null;
+
+  modal.addEventListener('ionModalDidDismiss', () => {
+    modal.remove();
+    if (unsubscribe) unsubscribe();
+  });
 
   /* -------------------------
    *   비동기 로딩: 완료 후 템플릿 생성
@@ -186,7 +201,7 @@ export function createUserProfileModal(
       // 기존 로딩 제거
       content.innerHTML = '';
 
-      // 🔥 여기서 처음으로 실제 프로필 DOM 생성!
+      // 실제 프로필 DOM 생성
       const profileRoot = profileTemplate(
         el,
         profile,
@@ -206,9 +221,44 @@ export function createUserProfileModal(
 
       // 제목도 업데이트
       titleEl.textContent = data.name;
+
+      // ✅ 내 프로필 모달인 경우, profileManager.change 구독
+      try {
+        const myAddr = tokenManager.getAddress?.();
+        if (myAddr) {
+          const normalizedMy = getAddress(myAddr);
+          const normalizedProfile = getAddress(
+            profile.account as `0x${string}`,
+          );
+
+          if (normalizedMy === normalizedProfile) {
+            const handler = (updated: Profile | null) => {
+              if (!updated) return;
+              try {
+                const updatedAddr = getAddress(
+                  updated.account as `0x${string}`,
+                );
+                if (updatedAddr !== normalizedMy) return;
+              } catch {
+                return;
+              }
+
+              const updatedData = toUserProfileData(updated, posts);
+              applyProfileData(profileRoot, updatedData);
+              titleEl.textContent = updatedData.name;
+            };
+
+            profileManager.on('change', handler);
+            unsubscribe = () => profileManager.off('change', handler as any);
+          }
+        }
+      } catch (e) {
+        console.error('[user-profile-modal] auto-sync setup failed', e);
+      }
     } catch (err) {
       console.error('Failed to load profile', err);
-      content.innerHTML = `<div style="padding: 30px; text-align:center;">Failed to load profile.</div>`;
+      content.innerHTML =
+        '<div style="padding: 30px; text-align:center;">Failed to load profile.</div>';
     }
   })();
 

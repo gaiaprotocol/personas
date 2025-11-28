@@ -34,8 +34,6 @@ import { sessionManager } from './auth/session-manager';
 // 🔹 프로필 타입/매니저
 import { fetchProfileWithPosts } from './api/profile';
 import { profileManager } from './services/profile-manager';
-
-// 🔹 타입 정의 (프로필)
 import type { Profile } from '../shared/types/profile';
 
 // 🔹 포스트 API
@@ -91,6 +89,9 @@ const router = new Navigo('/', {
   hash: false,
   linksSelector: 'a[href]',
 });
+
+// 현재 라우터에서 보고 있는 프로필 계정 주소
+let currentProfileRouteId: string | null = null;
 
 // =====================
 //   탭 헬퍼
@@ -371,15 +372,13 @@ function setupRoutes() {
     const { id } = match.data || {};
     if (!id) return;
 
+    currentProfileRouteId = id;
     setActiveTab('profile');
 
     const profileContent = document.getElementById('profile-tab-content');
     if (!profileContent) return;
 
-    profileContent.innerHTML =
-      '<div class="loading">Loading profile...</div>';
-
-    (async () => {
+    const loadProfileView = async () => {
       try {
         const { profile, posts } = await fetchProfileWithPosts(id);
 
@@ -395,7 +394,9 @@ function setupRoutes() {
         profileContent.innerHTML =
           '<div class="error">Failed to load profile. Please try again.</div>';
       }
-    })();
+    };
+
+    loadProfileView();
   });
 
   // 🔹 포스트 뷰 (/post/:id)
@@ -407,9 +408,6 @@ function setupRoutes() {
 
     const postContent = document.getElementById('post-tab-content');
     if (!postContent) return;
-
-    postContent.innerHTML =
-      '<div class="loading">Loading post...</div>';
 
     const postId = Number(id);
     if (!Number.isFinite(postId) || postId <= 0) {
@@ -457,8 +455,44 @@ document.addEventListener('DOMContentLoaded', () => {
     await profileManager.init();
     applyProfileAvatar(profileManager.profile);
 
-    profileManager.addEventListener('change', () => {
-      applyProfileAvatar(profileManager.profile);
+    profileManager.on('change', (newProfile) => {
+      applyProfileAvatar(newProfile);
+
+      // ✅ 내 프로필 페이지 보고 있을 때라면 프로필 탭도 즉시 갱신
+      const myAddr = tokenManager.getAddress?.();
+      if (!newProfile || !myAddr) return;
+
+      try {
+        const normalizedMy = getAddress(myAddr);
+        const normalizedCurrent =
+          currentProfileRouteId && currentProfileRouteId.startsWith('0x')
+            ? getAddress(currentProfileRouteId as `0x${string}`)
+            : null;
+
+        if (normalizedCurrent && normalizedCurrent === normalizedMy) {
+          const profileContent = document.getElementById('profile-tab-content');
+          if (!profileContent) return;
+
+          (async () => {
+            try {
+              const { profile, posts } = await fetchProfileWithPosts(
+                normalizedMy,
+              );
+              profileContent.innerHTML = '';
+              const profileTab = new ProfileTab(
+                profile,
+                posts,
+                router.navigate.bind(router),
+              );
+              profileContent.appendChild(profileTab.el);
+            } catch (err) {
+              console.error('[profile auto-refresh] failed', err);
+            }
+          })();
+        }
+      } catch (e) {
+        console.error('[profile auto-refresh] address normalize failed', e);
+      }
     });
 
     // 🔹 tokenManager 이벤트 기반 아바타 갱신
@@ -546,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     settingsBtns.forEach((btn) => {
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
-        await settingsModal.present();
+        await (settingsModal as any).present();
       });
     });
 

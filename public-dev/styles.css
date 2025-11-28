@@ -3779,6 +3779,16 @@ ion-modal.edit-profile-modal {
 .edit-profile-content {
   --background: #000;
   color: #fff;
+
+  /* 하단 고정 버튼 높이만큼 여유를 줘서 내용이 가려지지 않게 설정 */
+  --padding-bottom: 92px;
+  /* footer 높이에 맞춰 조절 가능 */
+}
+
+/* 스크롤 영역 래퍼 (필수는 아니지만 구조 명확하게) */
+.edit-profile-scroll-inner {
+  display: flex;
+  flex-direction: column;
 }
 
 /* ===== 상단 프로필 카드 (지갑 주소, 설명) ===== */
@@ -4016,15 +4026,28 @@ ion-modal.edit-profile-modal {
   margin-top: 0.4rem;
 }
 
-/* ===== 하단 버튼 ===== */
+/* 소셜 링크가 없을 때 안내 */
+.edit-profile-social-empty {
+  font-size: 0.85rem;
+  color: #777;
+  padding: 0.5rem 0;
+}
+
+/* ===== 하단 버튼 (sticky footer) ===== */
 
 .edit-profile-footer {
-  padding: 0.5rem 1.25rem 1.3rem;
+  --background: #000;
+  background: #000;
+  border-top: 1px solid #111;
+}
+
+.edit-profile-footer-inner {
+  padding: 0.5rem 1.25rem calc(1.3rem + env(safe-area-inset-bottom, 0px));
   display: flex;
   gap: 0.75rem;
 }
 
-.edit-profile-footer ion-button {
+.edit-profile-footer-inner ion-button {
   flex: 1;
 }
 /*!****************************************************************************************************!*\

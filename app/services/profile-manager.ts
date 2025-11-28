@@ -1,4 +1,5 @@
 import { tokenManager } from '@gaiaprotocol/client-common';
+import { EventEmitter } from '@webtaku/event-emitter';
 import { Profile } from '../../shared/types/profile';
 import {
   fetchMyProfile,
@@ -6,7 +7,9 @@ import {
   type SaveProfileInput,
 } from '../api/profile';
 
-class ProfileManager extends EventTarget {
+class ProfileManager extends EventEmitter<{
+  change: (newProfile: Profile | null) => void;
+}> {
   private _profile: Profile | null = null;
   private _loaded = false;
   private _loadingPromise: Promise<Profile | null> | null = null;
@@ -33,7 +36,7 @@ class ProfileManager extends EventTarget {
     if (!token) {
       this._profile = null;
       this._loaded = true;
-      this.dispatchChange();
+      this.emit('change', null);
       return null;
     }
 
@@ -42,13 +45,13 @@ class ProfileManager extends EventTarget {
         const p = await fetchMyProfile(token);
         this._profile = p;
         this._loaded = true;
-        this.dispatchChange();
+        this.emit('change', p);
         return p;
       } catch (err) {
         console.error('[profileManager] refresh failed', err);
         this._profile = null;
         this._loaded = true;
-        this.dispatchChange();
+        this.emit('change', null);
         return null;
       } finally {
         this._loadingPromise = null;
@@ -72,11 +75,7 @@ class ProfileManager extends EventTarget {
     this._profile = null;
     this._loaded = false;
     this._loadingPromise = null;
-    this.dispatchChange();
-  }
-
-  private dispatchChange() {
-    this.dispatchEvent(new Event('change'));
+    this.emit('change', null);
   }
 }
 

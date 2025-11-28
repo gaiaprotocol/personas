@@ -3,6 +3,7 @@ import './edit-profile.css';
 
 import { Profile, SocialLinks } from '../../shared/types/profile';
 import { fetchMyProfile, saveMyProfile } from '../api/profile';
+import { profileManager } from '../services/profile-manager';
 
 /* ===== 타입 정의 ===== */
 
@@ -71,8 +72,8 @@ async function setProfile(
     nickname: string;
     bio: string;
     socialLinks: SocialLinks;
-    bannerImageFile?: File; // 현재는 무시
-    avatarImageFile?: File; // 현재는 무시
+    bannerImageFile?: File;
+    avatarImageFile?: File;
   },
   token: string,
 ): Promise<void> {
@@ -81,7 +82,7 @@ async function setProfile(
   const body: Record<string, unknown> = {
     nickname,
     bio,
-    socialLinks, // Record<string, string> 그대로 전송
+    socialLinks,
   };
 
   await saveMyProfile(body, token);
@@ -438,14 +439,25 @@ export function createEditProfileModal(address: string, token: string) {
     ),
   );
 
-  /* ---------- 하단 버튼 ---------- */
+  /* ---------- content / footer 분리 ---------- */
+
+  const scrollInner = el(
+    'div.edit-profile-scroll-inner',
+    top,
+    mediaSection,
+    form,
+  );
+
+  const content = el(
+    'ion-content.edit-profile-content',
+    scrollInner,
+  ) as HTMLIonContentElement;
 
   const cancelBtn = el(
     'ion-button',
     {
       fill: 'outline',
       color: 'medium',
-      onclick: () => modal.dismiss(),
     },
     'Cancel',
   ) as HTMLIonButtonElement;
@@ -459,17 +471,20 @@ export function createEditProfileModal(address: string, token: string) {
     'Save',
   ) as HTMLIonButtonElement;
 
-  const footer = el('div.edit-profile-footer', cancelBtn, saveBtn);
-
-  const content = el(
-    'ion-content.edit-profile-content',
-    top,
-    mediaSection,
-    form,
-    footer,
+  const footerInner = el(
+    'div.edit-profile-footer-inner',
+    cancelBtn,
+    saveBtn,
   );
 
-  modal.append(header, content);
+  const footer = el(
+    'ion-footer.edit-profile-footer',
+    footerInner,
+  ) as HTMLIonFooterElement;
+
+  cancelBtn.onclick = () => modal.dismiss();
+
+  modal.append(header, content, footer);
 
   /* ---------- 상태 ---------- */
 
@@ -685,6 +700,13 @@ export function createEditProfileModal(address: string, token: string) {
         },
         token,
       );
+
+      // 저장 성공 후 전역 프로필 상태를 최신으로 갱신
+      try {
+        await profileManager.refresh();
+      } catch (refreshErr) {
+        console.error('[edit-profile] failed to refresh profile', refreshErr);
+      }
 
       const toast = document.createElement('ion-toast');
       toast.message = 'Profile updated successfully';
