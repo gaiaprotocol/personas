@@ -1,65 +1,32 @@
 import { el } from '@webtaku/el';
 import './edit-profile.css';
 
-interface SocialLinkInput {
+import { Profile, SocialLinks } from '../../shared/types/profile';
+import { fetchMyProfile, saveMyProfile } from '../api/profile';
+
+/* ===== 타입 정의 ===== */
+
+type SocialLinkInput = {
   id: string;
   label: string;
   url: string;
-}
+};
 
-interface ProfileData {
-  nickname?: string;
-  bio?: string;
-  socialLinks?: SocialLinkInput[];
-  bannerUrl?: string | null;
-  avatarUrl?: string | null;
-}
-
-/**
- * TODO: 실제 API에 맞게 구현하세요.
- * 이 예시는 타입/형태 참고용입니다.
- */
-async function fetchProfile(_address: `0x${string}`): Promise<{
-  nickname?: string | null;
-  bio?: string | null;
-  socialLinks?: { label: string; url: string }[] | null;
-  bannerUrl?: string | null;
-  avatarUrl?: string | null;
-}> {
-  // 서버에서 가져오도록 교체
-  return {
-    nickname: '',
-    bio: '',
-    socialLinks: [],
-    bannerUrl: null,
-    avatarUrl: null
-  };
-}
-
-/**
- * TODO: 실제 API에 맞게 구현하세요.
- *  - 파일 업로드 전략(multipart / 사전 업로드 후 URL만 전송 등)에 맞게 수정 필요
- */
-async function setProfile(
-  _payload: {
-    nickname: string;
-    bio: string;
-    socialLinks: { label: string; url: string }[];
-    bannerImageFile?: File;
-    avatarImageFile?: File;
-  },
-  _token: string
-): Promise<void> {
-  // 서버로 전송하도록 교체
-}
+type ProfileData = {
+  nickname: string;
+  bio: string;
+  socialLinks: SocialLinks; // 항상 Record<string, string>
+  bannerUrl: string | null;
+  avatarUrl: string | null;
+};
 
 /* 랜덤 ID 헬퍼 (crypto.randomUUID가 없을 경우 대비) */
 const newId = () =>
-(globalThis.crypto && 'randomUUID' in globalThis.crypto
-  ? globalThis.crypto.randomUUID()
-  : `id_${Math.random().toString(36).slice(2)}`);
+  globalThis.crypto && 'randomUUID' in globalThis.crypto
+    ? globalThis.crypto.randomUUID()
+    : `id_${Math.random().toString(36).slice(2)}`;
 
-/* 파일 -> dataURL */
+/* 파일 -> dataURL (프리뷰용) */
 const readFileAsDataUrl = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -68,21 +35,124 @@ const readFileAsDataUrl = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
-export function createEditProfileModal(address: string, token: string) {
-  const modal = el('ion-modal.edit-profile-modal') as any;
+/**
+ * 서버에서 내 프로필 받아오기
+ *  - /my-profile 응답을 Profile로 가정
+ *  - 아직 백엔드에 배너 컬럼이 없으므로 bannerUrl은 null로 강제
+ */
+async function fetchProfile(
+  _address: `0x${string}`,
+  token: string,
+): Promise<{
+  nickname: string | null;
+  bio: string | null;
+  socialLinks: SocialLinks | null;
+  bannerUrl: string | null;
+  avatarUrl: string | null;
+}> {
+  const res: Profile = await fetchMyProfile(token);
 
-  /* ---------- 숨겨진 파일 인풋 ---------- */
+  return {
+    nickname: res.nickname ?? null,
+    bio: res.bio ?? null,
+    socialLinks: res.socialLinks ?? null,
+    bannerUrl: null, // 아직 백엔드에 배너 컬럼이 없으므로
+    avatarUrl: res.avatarUrl ?? null,
+  };
+}
+
+/**
+ * 실제 저장 로직
+ *  - nickname / bio / social_links 를 /set-profile 로 전송
+ *  - avatar/banner 파일은 아직 업로드 엔드포인트 정보가 없어서 payload에는 넣지 않음
+ */
+async function setProfile(
+  payload: {
+    nickname: string;
+    bio: string;
+    socialLinks: SocialLinks;
+    bannerImageFile?: File; // 현재는 무시
+    avatarImageFile?: File; // 현재는 무시
+  },
+  token: string,
+): Promise<void> {
+  const { nickname, bio, socialLinks } = payload;
+
+  const body: Record<string, unknown> = {
+    nickname,
+    bio,
+    socialLinks, // Record<string, string> 그대로 전송
+  };
+
+  await saveMyProfile(body, token);
+}
+
+/* SocialLinkInput[] -> SocialLinks 로 변환 */
+const socialInputsToRecord = (inputs: SocialLinkInput[]): SocialLinks => {
+  const result: SocialLinks = {};
+  inputs
+    .map((l) => ({
+      label: l.label.trim(),
+      url: l.url.trim(),
+    }))
+    .filter((l) => l.label || l.url)
+    .forEach((l) => {
+      result[l.label] = l.url;
+    });
+
+  return result;
+};
+
+/* SocialLinks 동등성 비교 (공백/빈 값 정규화) */
+const socialsEqual = (
+  original: SocialLinks,
+  currentInputs: SocialLinkInput[],
+): boolean => {
+  const normRecord = (obj: SocialLinks): SocialLinks => {
+    const res: SocialLinks = {};
+    Object.entries(obj)
+      .map(([label, url]) => [label.trim(), url.trim()] as [string, string])
+      .filter(([label, url]) => label || url)
+      .forEach(([label, url]) => {
+        res[label] = url;
+      });
+    return res;
+  };
+
+  const a = normRecord(original);
+  const b = normRecord(socialInputsToRecord(currentInputs));
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+
+  if (keysA.length !== keysB.length) return false;
+
+  for (const key of keysA) {
+    if (a[key] !== b[key]) return false;
+  }
+
+  return true;
+};
+
+// =====================
+//   모달 생성
+// =====================
+
+export function createEditProfileModal(address: string, token: string) {
+  const modal = el('ion-modal.edit-profile-modal') as HTMLIonModalElement;
+
+  /* ---------- 숨겨진 파일 인풋 (프리뷰 전용) ---------- */
 
   const bannerFileInput = el('input', {
     type: 'file',
     accept: 'image/*',
-    style: 'display:none'
+    style: 'display:none',
   }) as HTMLInputElement;
 
   const avatarFileInput = el('input', {
     type: 'file',
     accept: 'image/*',
-    style: 'display:none'
+    style: 'display:none',
   }) as HTMLInputElement;
 
   modal.appendChild(bannerFileInput);
@@ -95,18 +165,14 @@ export function createEditProfileModal(address: string, token: string) {
     {
       slot: 'start',
       fill: 'clear',
-      onclick: () => modal.dismiss()
+      onclick: () => modal.dismiss(),
     },
-    el('ion-icon', { name: 'chevron-back-outline' })
-  );
+    el('ion-icon', { name: 'chevron-back-outline' }),
+  ) as HTMLIonButtonElement;
 
   const header = el(
     'ion-header.edit-profile-header',
-    el(
-      'ion-toolbar',
-      closeBtn,
-      el('ion-title', 'Edit Profile')
-    )
+    el('ion-toolbar', closeBtn, el('ion-title', 'Edit Profile')),
   );
 
   /* ---------- 상단 프로필 카드 (지갑 주소) ---------- */
@@ -116,35 +182,26 @@ export function createEditProfileModal(address: string, token: string) {
   const nameEl = el(
     'div',
     { style: 'font-weight: 600; font-size: 1rem;' },
-    'Your profile'
+    'Your profile',
   );
 
   const addrEl = el(
     'div.edit-profile-address',
-    `${address.slice(0, 6)}...${address.slice(-4)}`
+    `${address.slice(0, 6)}...${address.slice(-4)}`,
   );
   const hintEl = el(
     'div.edit-profile-hint',
-    'Set how you appear to persona holders.'
+    'Set how you appear to persona holders.',
   );
 
-  const topMain = el(
-    'div.edit-profile-top-main',
-    nameEl,
-    addrEl,
-    hintEl
-  );
+  const topMain = el('div.edit-profile-top-main', nameEl, addrEl, hintEl);
 
-  const top = el(
-    'div.edit-profile-top',
-    avatarSmall,
-    topMain
-  );
+  const top = el('div.edit-profile-top', avatarSmall, topMain);
 
   /* ---------- 배너 & 큰 아바타 프리뷰 ---------- */
 
   const bannerPreview = el(
-    'div.edit-profile-banner-preview'
+    'div.edit-profile-banner-preview',
   ) as HTMLDivElement;
   bannerPreview.classList.add('is-empty');
 
@@ -156,10 +213,10 @@ export function createEditProfileModal(address: string, token: string) {
       size: 'small',
       fill: 'solid',
       color: 'dark',
-      onclick: () => bannerFileInput.click()
+      onclick: () => bannerFileInput.click(),
     },
-    'Change banner'
-  );
+    'Change banner',
+  ) as HTMLIonButtonElement;
 
   const bannerResetBtn = el(
     'ion-button',
@@ -172,27 +229,27 @@ export function createEditProfileModal(address: string, token: string) {
         bannerPreviewUrl = originalBannerUrl;
         applyBannerPreview();
         updateSaveButtonState();
-      }
+      },
     },
-    'Reset'
-  );
+    'Reset',
+  ) as HTMLIonButtonElement;
 
   const bannerActions = el(
     'div.edit-profile-banner-actions',
     bannerChangeBtn,
-    bannerResetBtn
+    bannerResetBtn,
   );
 
   const heroAvatarInner = el('div.edit-profile-hero-avatar-inner');
   const heroAvatarInitial = el(
     'span.edit-profile-hero-avatar-initial',
-    'Y'
-  );
+    'Y',
+  ) as HTMLSpanElement;
   heroAvatarInner.appendChild(heroAvatarInitial);
 
   const heroAvatar = el(
     'div.edit-profile-hero-avatar',
-    heroAvatarInner
+    heroAvatarInner,
   ) as HTMLDivElement;
 
   const bannerWrapper = el(
@@ -200,7 +257,7 @@ export function createEditProfileModal(address: string, token: string) {
     bannerPreview,
     bannerOverlay,
     heroAvatar,
-    bannerActions
+    bannerActions,
   );
 
   const avatarChangeBtn = el(
@@ -209,10 +266,10 @@ export function createEditProfileModal(address: string, token: string) {
       size: 'small',
       fill: 'solid',
       color: 'dark',
-      onclick: () => avatarFileInput.click()
+      onclick: () => avatarFileInput.click(),
     },
-    'Change avatar'
-  );
+    'Change avatar',
+  ) as HTMLIonButtonElement;
 
   const avatarResetBtn = el(
     'ion-button',
@@ -225,21 +282,21 @@ export function createEditProfileModal(address: string, token: string) {
         avatarPreviewUrl = originalAvatarUrl;
         applyAvatarPreview();
         updateSaveButtonState();
-      }
+      },
     },
-    'Reset'
-  );
+    'Reset',
+  ) as HTMLIonButtonElement;
 
   const avatarActions = el(
     'div.edit-profile-avatar-actions',
     avatarChangeBtn,
-    avatarResetBtn
+    avatarResetBtn,
   );
 
   const mediaSection = el(
     'div.edit-profile-media',
     bannerWrapper,
-    avatarActions
+    avatarActions,
   );
 
   /* ---------- 입력 폼: 기본 정보 ---------- */
@@ -248,8 +305,8 @@ export function createEditProfileModal(address: string, token: string) {
     label: 'Nickname',
     labelPlacement: 'stacked',
     placeholder: 'How should people call you?',
-    value: ''
-  }) as any;
+    value: '',
+  }) as HTMLIonInputElement;
 
   const bioInput = el('ion-textarea', {
     label: 'Bio',
@@ -257,20 +314,22 @@ export function createEditProfileModal(address: string, token: string) {
     placeholder: 'Introduce yourself to persona holders',
     value: '',
     rows: 4,
-    autoGrow: true
-  }) as any;
+    autoGrow: true,
+  }) as HTMLIonTextareaElement;
 
   /* ---------- 입력 폼: 소셜 링크 ---------- */
 
-  let socialLinks: SocialLinkInput[] = [];
+  let socialLinkInputs: SocialLinkInput[] = [];
 
-  const socialListContainer = el('div.edit-profile-social-list');
+  const socialListContainer = el(
+    'div.edit-profile-social-list',
+  ) as HTMLDivElement;
 
   const createSocialRow = (link: SocialLinkInput, index: number) => {
     const rowTitle = el(
       'div.edit-profile-social-row-title',
-      link.label || `Link ${index + 1}`
-    );
+      link.label || `Link ${index + 1}`,
+    ) as HTMLDivElement;
 
     const deleteBtn = el(
       'ion-button',
@@ -279,38 +338,39 @@ export function createEditProfileModal(address: string, token: string) {
         size: 'small',
         color: 'danger',
         onclick: () => {
-          socialLinks = socialLinks.filter((l) => l.id !== link.id);
+          socialLinkInputs = socialLinkInputs.filter((l) => l.id !== link.id);
           renderSocialList();
           updateSaveButtonState();
-        }
+        },
       },
-      el('ion-icon', { name: 'trash-outline', slot: 'icon-only' })
-    );
+      el('ion-icon', { name: 'trash-outline', slot: 'icon-only' }),
+    ) as HTMLIonButtonElement;
 
     const headerRow = el(
       'div.edit-profile-social-row-header',
       rowTitle,
-      el('div.edit-profile-social-row-actions', deleteBtn)
+      el('div.edit-profile-social-row-actions', deleteBtn),
     );
 
     const labelInput = el('ion-input', {
       label: 'Label',
       labelPlacement: 'stacked',
       placeholder: 'e.g. Twitter',
-      value: link.label
-    }) as any;
+      value: link.label,
+    }) as HTMLIonInputElement;
 
     const urlInput = el('ion-input', {
       label: 'URL',
       labelPlacement: 'stacked',
       placeholder: 'https://',
       inputmode: 'url',
-      value: link.url
-    }) as any;
+      value: link.url,
+    }) as HTMLIonInputElement;
 
     labelInput.addEventListener('ionInput', () => {
-      link.label = (labelInput.value ?? '').toString();
-      rowTitle.textContent = link.label || `Link ${index + 1}`;
+      const value = (labelInput.value ?? '').toString();
+      link.label = value;
+      rowTitle.textContent = value || `Link ${index + 1}`;
       updateSaveButtonState();
     });
 
@@ -321,20 +381,25 @@ export function createEditProfileModal(address: string, token: string) {
 
     const body = el(
       'div.edit-profile-social-body',
-      labelInput,
-      urlInput
+      labelInput as any,
+      urlInput as any,
     );
 
-    return el(
-      'div.edit-profile-social-row',
-      headerRow,
-      body
-    );
+    return el('div.edit-profile-social-row', headerRow, body);
   };
 
   const renderSocialList = () => {
     socialListContainer.innerHTML = '';
-    socialLinks.forEach((link, idx) => {
+    if (!socialLinkInputs.length) {
+      const empty = el(
+        'div.edit-profile-social-empty',
+        'No social links yet. Add one!',
+      );
+      socialListContainer.appendChild(empty);
+      return;
+    }
+
+    socialLinkInputs.forEach((link, idx) => {
       socialListContainer.appendChild(createSocialRow(link, idx));
     });
   };
@@ -343,9 +408,9 @@ export function createEditProfileModal(address: string, token: string) {
     const newLink: SocialLinkInput = {
       id: initial?.id ?? newId(),
       label: initial?.label ?? '',
-      url: initial?.url ?? ''
+      url: initial?.url ?? '',
     };
-    socialLinks.push(newLink);
+    socialLinkInputs.push(newLink);
     renderSocialList();
     updateSaveButtonState();
   };
@@ -355,22 +420,22 @@ export function createEditProfileModal(address: string, token: string) {
     {
       fill: 'outline',
       size: 'small',
-      onclick: () => addLink()
+      onclick: () => addLink(),
     },
-    '+ Add Link'
-  );
+    '+ Add Link',
+  ) as HTMLIonButtonElement;
 
   const form = el(
     'div.edit-profile-form',
     el(
       'ion-list',
       el('div.edit-profile-section-label', 'Profile'),
-      nicknameInput,
-      bioInput,
+      nicknameInput as any,
+      bioInput as any,
       el('div.edit-profile-section-label', 'Social Links'),
       socialListContainer,
-      addLinkButton
-    )
+      addLinkButton,
+    ),
   );
 
   /* ---------- 하단 버튼 ---------- */
@@ -380,39 +445,41 @@ export function createEditProfileModal(address: string, token: string) {
     {
       fill: 'outline',
       color: 'medium',
-      onclick: () => modal.dismiss()
+      onclick: () => modal.dismiss(),
     },
-    'Cancel'
-  ) as any;
+    'Cancel',
+  ) as HTMLIonButtonElement;
 
   const saveBtn = el(
     'ion-button',
     {
       expand: 'block',
-      disabled: true
+      disabled: true,
     },
-    'Save'
-  ) as any;
+    'Save',
+  ) as HTMLIonButtonElement;
 
-  const footer = el(
-    'div.edit-profile-footer',
-    cancelBtn,
-    saveBtn
-  );
+  const footer = el('div.edit-profile-footer', cancelBtn, saveBtn);
 
   const content = el(
     'ion-content.edit-profile-content',
     top,
     mediaSection,
     form,
-    footer
+    footer,
   );
 
   modal.append(header, content);
 
   /* ---------- 상태 ---------- */
 
-  let originalProfile: ProfileData = {};
+  let originalProfile: ProfileData = {
+    nickname: '',
+    bio: '',
+    socialLinks: {},
+    bannerUrl: null,
+    avatarUrl: null,
+  };
   let isSaving = false;
 
   let originalBannerUrl: string | null = null;
@@ -424,31 +491,7 @@ export function createEditProfileModal(address: string, token: string) {
   let newBannerFile: File | null = null;
   let newAvatarFile: File | null = null;
 
-  const socialsEqual = (
-    a?: SocialLinkInput[],
-    b?: SocialLinkInput[]
-  ) => {
-    const norm = (arr?: SocialLinkInput[]) =>
-      (arr ?? [])
-        .map((l) => ({
-          label: l.label.trim(),
-          url: l.url.trim()
-        }))
-        .filter((l) => l.label || l.url);
-
-    const aa = norm(a);
-    const bb = norm(b);
-
-    if (aa.length !== bb.length) return false;
-    for (let i = 0; i < aa.length; i++) {
-      if (aa[i].label !== bb[i].label || aa[i].url !== bb[i].url) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  /* ---------- 프리뷰 적용 함수 ---------- */
+  /* ---------- 프리뷰 적용 ---------- */
 
   const applyBannerPreview = () => {
     if (bannerPreviewUrl) {
@@ -461,28 +504,29 @@ export function createEditProfileModal(address: string, token: string) {
   };
 
   const applyAvatarPreview = () => {
-    const nicknameVal = (nicknameInput.value ??
+    const nicknameVal =
+      (nicknameInput.value as string | null) ??
       originalProfile.nickname ??
-      'Y') as string;
+      'Y';
     const initialChar =
       nicknameVal.trim().charAt(0).toUpperCase() || 'Y';
 
     heroAvatarInitial.textContent = initialChar;
 
+    const heroAvatarInnerEl = heroAvatar.querySelector(
+      '.edit-profile-hero-avatar-inner',
+    ) as HTMLElement;
+
     if (avatarPreviewUrl) {
       heroAvatar.classList.add('has-image');
-      (heroAvatar.querySelector(
-        '.edit-profile-hero-avatar-inner'
-      ) as HTMLElement).style.backgroundImage = `url(${avatarPreviewUrl})`;
+      heroAvatarInnerEl.style.backgroundImage = `url(${avatarPreviewUrl})`;
 
       avatarSmall.classList.add('has-image');
       avatarSmall.style.backgroundImage = `url(${avatarPreviewUrl})`;
       avatarSmall.textContent = '';
     } else {
       heroAvatar.classList.remove('has-image');
-      (heroAvatar.querySelector(
-        '.edit-profile-hero-avatar-inner'
-      ) as HTMLElement).style.backgroundImage = '';
+      heroAvatarInnerEl.style.backgroundImage = '';
 
       avatarSmall.classList.remove('has-image');
       avatarSmall.style.backgroundImage = '';
@@ -498,20 +542,25 @@ export function createEditProfileModal(address: string, token: string) {
       return;
     }
 
-    const nickname = (nicknameInput.value ?? '').toString().trim();
-    const bio = (bioInput.value ?? '').toString().trim();
-    const origNick = (originalProfile.nickname ?? '').trim();
-    const origBio = (originalProfile.bio ?? '').trim();
+    const nickname = ((nicknameInput.value ?? '') as string).trim();
+    const bio = ((bioInput.value ?? '') as string).trim();
+    const origNick = originalProfile.nickname.trim();
+    const origBio = originalProfile.bio.trim();
 
     const bannerChanged =
       (bannerPreviewUrl || null) !== (originalBannerUrl || null);
     const avatarChanged =
       (avatarPreviewUrl || null) !== (originalAvatarUrl || null);
 
+    const socialsChanged = !socialsEqual(
+      originalProfile.socialLinks,
+      socialLinkInputs,
+    );
+
     const changed =
       nickname !== origNick ||
       bio !== origBio ||
-      !socialsEqual(socialLinks, originalProfile.socialLinks) ||
+      socialsChanged ||
       bannerChanged ||
       avatarChanged;
 
@@ -525,7 +574,7 @@ export function createEditProfileModal(address: string, token: string) {
 
   bioInput.addEventListener('ionInput', updateSaveButtonState);
 
-  /* ---------- 파일 입력 핸들러 ---------- */
+  /* ---------- 파일 인풋 핸들러 (프리뷰 전용) ---------- */
 
   bannerFileInput.addEventListener('change', async (e) => {
     const file = (e.target as HTMLInputElement).files?.[0];
@@ -549,29 +598,33 @@ export function createEditProfileModal(address: string, token: string) {
 
   (async () => {
     try {
-      const profile = await fetchProfile(address as `0x${string}`);
+      const profile = await fetchProfile(address as `0x${string}`, token);
 
       originalProfile = {
         nickname: profile.nickname ?? '',
         bio: profile.bio ?? '',
-        socialLinks: (profile.socialLinks ?? []).map((l) => ({
-          id: newId(),
-          label: l.label ?? '',
-          url: l.url ?? ''
-        })),
-        bannerUrl: profile.bannerUrl ?? null,
-        avatarUrl: profile.avatarUrl ?? null
+        socialLinks: profile.socialLinks ?? {},
+        bannerUrl: profile.bannerUrl,
+        avatarUrl: profile.avatarUrl,
       };
 
       nicknameInput.value = originalProfile.nickname;
       bioInput.value = originalProfile.bio;
 
-      socialLinks = [...(originalProfile.socialLinks ?? [])];
-      if (!socialLinks.length) addLink();
+      // Record<string, string> -> SocialLinkInput[]
+      socialLinkInputs = Object.entries(originalProfile.socialLinks).map(
+        ([label, url]) => ({
+          id: newId(),
+          label,
+          url,
+        }),
+      );
+
+      if (!socialLinkInputs.length) addLink();
       else renderSocialList();
 
-      originalBannerUrl = originalProfile.bannerUrl ?? null;
-      originalAvatarUrl = originalProfile.avatarUrl ?? null;
+      originalBannerUrl = originalProfile.bannerUrl;
+      originalAvatarUrl = originalProfile.avatarUrl;
 
       bannerPreviewUrl = originalBannerUrl;
       avatarPreviewUrl = originalAvatarUrl;
@@ -585,12 +638,12 @@ export function createEditProfileModal(address: string, token: string) {
       originalProfile = {
         nickname: '',
         bio: '',
-        socialLinks: [],
+        socialLinks: {},
         bannerUrl: null,
-        avatarUrl: null
+        avatarUrl: null,
       };
 
-      socialLinks = [];
+      socialLinkInputs = [];
       addLink();
 
       originalBannerUrl = null;
@@ -604,22 +657,17 @@ export function createEditProfileModal(address: string, token: string) {
     }
   })();
 
-  /* ---------- 저장 로직 ---------- */
+  /* ---------- 저장 ---------- */
 
   saveBtn.onclick = async () => {
     if (isSaving) return;
     isSaving = true;
     updateSaveButtonState();
 
-    const nickname = (nicknameInput.value ?? '').toString().trim();
-    const bio = (bioInput.value ?? '').toString().trim();
+    const nickname = ((nicknameInput.value ?? '') as string).trim();
+    const bio = ((bioInput.value ?? '') as string).trim();
 
-    const cleanSocials = socialLinks
-      .map((l) => ({
-        label: l.label.trim(),
-        url: l.url.trim()
-      }))
-      .filter((l) => l.label || l.url);
+    const cleanSocials: SocialLinks = socialInputsToRecord(socialLinkInputs);
 
     const prevLabel = saveBtn.textContent;
     saveBtn.textContent = '';
@@ -633,9 +681,9 @@ export function createEditProfileModal(address: string, token: string) {
           bio,
           socialLinks: cleanSocials,
           bannerImageFile: newBannerFile || undefined,
-          avatarImageFile: newAvatarFile || undefined
+          avatarImageFile: newAvatarFile || undefined,
         },
-        token
+        token,
       );
 
       const toast = document.createElement('ion-toast');

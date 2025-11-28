@@ -1,85 +1,24 @@
+import { PersonaPost } from "../types/post";
 import { AnyBuilder } from "./b";
+import { avatarInitialFromName, formatRelativeTimeFromSeconds, shortenAddress } from "./utils";
 
-interface Post {
-  id: string;
-  authorName: string;
-  handle: string;
-  avatarInitial: string;
-  time: string;   // "2h", "5m", "Now"
-  content: string;
-  replies: number;
-  reposts: number;
-  likes: number;
-  liked?: boolean;
-}
+export function post(
+  b: AnyBuilder,
+  post: PersonaPost,
+  replyPosts: PersonaPost[],
+) {
+  // 메인 포스트 표시용 데이터
+  const authorAddress = post.author;
+  const authorShort = shortenAddress(authorAddress);
+  const authorHandle = `@${authorShort}`;
+  const avatarInitial = avatarInitialFromName(authorShort);
+  const timeLabel = formatRelativeTimeFromSeconds(post.createdAt);
 
-interface Reply {
-  id: string;
-  authorName: string;
-  handle: string;
-  avatarInitial: string;
-  time: string;
-  content: string;
-  likes: number;
-  liked?: boolean;
-}
+  let mainLiked = false; // 클라이언트 로컬 상태
+  let mainLikes = post.likeCount ?? 0;
+  let replyCount = post.commentCount ?? replyPosts.length;
 
-export function post(b: AnyBuilder) {
-
-  // ---- 샘플 데이터 ----
-  let postData: Post = {
-    id: 'p1',
-    authorName: 'Noah Tech',
-    handle: '@noahtech',
-    avatarInitial: 'N',
-    time: '2h',
-    content:
-      'Just shipped a new feature for my persona holders: realtime on-chain alerts 🔔\n\nIf you hold at least 1 fragment, you’ll start seeing it today.',
-    replies: 3,
-    reposts: 7,
-    likes: 134
-  };
-
-  let replies: Reply[] = [
-    {
-      id: 'r1',
-      authorName: 'Luna Park',
-      handle: '@lunalogs',
-      avatarInitial: 'L',
-      time: '1h',
-      content: 'Tried it earlier — UX feels great. Thanks for shipping this so fast ⚡️',
-      likes: 12
-    },
-    {
-      id: 'r2',
-      authorName: 'You',
-      handle: '@you',
-      avatarInitial: 'Y',
-      time: '45m',
-      content: 'This is exactly what I needed for tracking whales 🐋',
-      likes: 5,
-      liked: true
-    },
-    {
-      id: 'r3',
-      authorName: 'Marcus Dev',
-      handle: '@marcusdev',
-      avatarInitial: 'M',
-      time: '10m',
-      content: 'Can you open source some of the alert logic? Would love to contribute.',
-      likes: 0
-    }
-  ];
-
-  // handle → 슬러그(/profile/:id)용 변환
-  const toProfileId = (handle: string, fallbackName: string) =>
-    handle.startsWith('@')
-      ? handle.slice(1) // "@noahtech" → "noahtech"
-      : fallbackName.toLowerCase().replace(/\s+/g, '-'); // "Noah Tech" → "noah-tech"
-
-  const mainProfileId = toProfileId(postData.handle, postData.authorName);
-
-  // ---- 요소 레퍼런스 (클라이언트에서만 HTMLElement로 세팅) ----
+  // ---- 요소 레퍼런스 ----
   let likeActionEl: HTMLElement | null = null;
   let likeCountEl: HTMLElement | null = null;
   let repliesCountEl: HTMLElement | null = null;
@@ -87,29 +26,52 @@ export function post(b: AnyBuilder) {
   let replyInputEl: HTMLTextAreaElement | null = null;
   let replyButtonEl: HTMLButtonElement | null = null;
 
-  // ---- 헬퍼: 메인 포스트 좋아요 토글 ----
+  // ---- 메인 포스트 좋아요 토글 ----
   function togglePostLike() {
     if (!likeCountEl || !likeActionEl) return;
-
-    postData.liked = !postData.liked;
-    postData.likes += postData.liked ? 1 : -1;
-    if (postData.likes < 0) postData.likes = 0;
-
-    likeCountEl.textContent = String(postData.likes);
-    likeActionEl.classList.toggle('liked', !!postData.liked);
+    mainLiked = !mainLiked;
+    mainLikes += mainLiked ? 1 : -1;
+    if (mainLikes < 0) mainLikes = 0;
+    likeCountEl.textContent = String(mainLikes);
+    likeActionEl.classList.toggle("liked", mainLiked);
   }
 
-  // ---- 헬퍼: 개별 답글 노드 생성 ----
-  function createReplyNode(reply: Reply): HTMLElement | string {
-    const likeRaw = b(
-      'div.post-reply-actions',
-      `❤ ${reply.likes}`
-    );
+  // ---- Reply UI 전용 타입 ----
+  type ReplyView = {
+    id: number | string;
+    post: PersonaPost | null; // 새로 작성한 답글은 null
+    author: string;
+    handle: string;
+    avatarInitial: string;
+    timeLabel: string;
+    content: string;
+    likes: number;
+    liked: boolean;
+  };
 
-    if (typeof likeRaw !== 'string') {
+  const replyViews: ReplyView[] = replyPosts.map((rp) => {
+    const short = shortenAddress(rp.author);
+    return {
+      id: rp.id,
+      post: rp,
+      author: short,
+      handle: `@${short}`,
+      avatarInitial: avatarInitialFromName(short),
+      timeLabel: formatRelativeTimeFromSeconds(rp.createdAt),
+      content: rp.content,
+      likes: rp.likeCount ?? 0,
+      liked: false,
+    };
+  });
+
+  // ---- 개별 답글 노드 생성 ----
+  function createReplyNode(reply: ReplyView): HTMLElement | string {
+    const likeRaw = b("div.post-reply-actions", `❤ ${reply.likes}`);
+
+    if (typeof likeRaw !== "string") {
       const likeEl = likeRaw as HTMLElement;
       if (reply.liked) {
-        likeEl.classList.add('liked');
+        likeEl.classList.add("liked");
       }
       likeEl.onclick = (ev) => {
         ev.stopPropagation();
@@ -117,76 +79,72 @@ export function post(b: AnyBuilder) {
         reply.likes += reply.liked ? 1 : -1;
         if (reply.likes < 0) reply.likes = 0;
         likeEl.textContent = `❤ ${reply.likes}`;
-        likeEl.classList.toggle('liked', !!reply.liked);
+        likeEl.classList.toggle("liked", reply.liked);
       };
     }
 
-    const profileId = toProfileId(reply.handle, reply.authorName);
+    const profileHref = `/profile/${reply.author}`;
 
     const item = b(
-      'div.post-reply-item',
-      { 'data-id': reply.id },
-      b('div.post-reply-avatar-small', reply.avatarInitial),
+      "div.post-reply-item",
+      { "data-id": reply.id },
+      b("div.post-reply-avatar-small", reply.avatarInitial),
       b(
-        'div.post-reply-body',
+        "div.post-reply-body",
         b(
-          'div.post-reply-header',
-          // 🔗 작성자 → 프로필 링크
+          "div.post-reply-header",
           b(
-            'a.post-reply-author',
-            { href: `/profile/${profileId}` },
-            reply.authorName
+            "a.post-reply-author",
+            { href: profileHref },
+            reply.author,
           ),
-          b('span.post-reply-handle', reply.handle),
-          b('span', '·'),
-          b('span.post-reply-time', reply.time)
+          b("span.post-reply-handle", reply.handle),
+          b("span", "·"),
+          b("span.post-reply-time", reply.timeLabel),
         ),
-        b('div.post-reply-content', reply.content),
-        likeRaw
-      )
+        b("div.post-reply-content", reply.content),
+        likeRaw,
+      ),
     );
 
     return item;
   }
 
-  // ---- 헬퍼: 답글 전송 ----
+  // ---- 답글 전송 ----
   function handleReplySubmit() {
     if (!replyInputEl || !replyButtonEl) return;
 
-    const raw = replyInputEl.value ?? '';
+    const raw = replyInputEl.value ?? "";
     const text = raw.trim();
     if (!text) return;
 
-    const now = new Date();
-    const time = now.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit'
-    });
+    const nowSec = Math.floor(Date.now() / 1000);
 
-    const reply: Reply = {
-      id: `reply-${Date.now()}`,
-      authorName: 'You',
-      handle: '@you',
-      avatarInitial: 'Y',
-      time,
+    const newReply: ReplyView = {
+      id: `local-${Date.now()}`,
+      post: null,
+      author: "You",
+      handle: "@you",
+      avatarInitial: "Y",
+      timeLabel: formatRelativeTimeFromSeconds(nowSec),
       content: text,
       likes: 0,
-      liked: false
+      liked: false,
     };
 
-    replies.unshift(reply);
-    postData.replies += 1;
+    replyViews.unshift(newReply);
+    replyCount += 1;
 
     if (repliesCountEl) {
-      repliesCountEl.textContent = String(postData.replies);
+      repliesCountEl.textContent = String(replyCount);
     }
 
-    replyInputEl.value = '';
+    replyInputEl.value = "";
     replyButtonEl.disabled = true;
 
     if (replyListEl) {
-      const node = createReplyNode(reply);
-      if (typeof node !== 'string') {
+      const node = createReplyNode(newReply);
+      if (typeof node !== "string") {
         replyListEl.insertBefore(node as HTMLElement, replyListEl.firstChild);
       }
     }
@@ -194,119 +152,123 @@ export function post(b: AnyBuilder) {
 
   // ---- 헤더 (뒤로가기) ----
   const header = b(
-    'div.post-header',
+    "div.post-header",
     b(
-      'button.post-back-btn',
+      "button.post-back-btn",
       {
-        type: 'button',
+        type: "button",
         onclick: () => {
-          if (typeof window !== 'undefined' && window.history) {
+          if (typeof window !== "undefined" && window.history) {
             window.history.back();
           }
-        }
+        },
       },
-      b('div.post-back-icon')
+      b("div.post-back-icon"),
     ),
-    b('div.post-title', 'Post')
+    b("div.post-title", "Post"),
   );
 
-  // ---- 메인 포스트: 통계 요소 생성 ----
+  // ---- 메인 포스트: 통계 요소 ----
   const likeCountRaw = b(
-    'span.post-main-stat-strong',
-    String(postData.likes)
+    "span.post-main-stat-strong",
+    String(mainLikes),
   );
-  if (typeof likeCountRaw !== 'string') {
+  if (typeof likeCountRaw !== "string") {
     likeCountEl = likeCountRaw as HTMLElement;
   }
 
   const repliesCountRaw = b(
-    'span.post-main-stat-strong',
-    String(postData.replies)
+    "span.post-main-stat-strong",
+    String(replyCount),
   );
-  if (typeof repliesCountRaw !== 'string') {
+  if (typeof repliesCountRaw !== "string") {
     repliesCountEl = repliesCountRaw as HTMLElement;
   }
 
   const stats = b(
-    'div.post-main-stats',
+    "div.post-main-stats",
+    b("div.post-main-stat", repliesCountRaw, b("span", "Replies")),
     b(
-      'div.post-main-stat',
-      repliesCountRaw,
-      b('span', 'Replies')
+      "div.post-main-stat",
+      b("span.post-main-stat-strong", String(post.repostCount ?? 0)),
+      b("span", "Reposts"),
     ),
-    b(
-      'div.post-main-stat',
-      b('span.post-main-stat-strong', String(postData.reposts)),
-      b('span', 'Reposts')
-    ),
-    b(
-      'div.post-main-stat',
-      likeCountRaw,
-      b('span', 'Likes')
-    )
+    b("div.post-main-stat", likeCountRaw, b("span", "Likes")),
   );
 
+  // ---- 메인 포스트 좋아요 액션 ----
   const likeActionRaw = b(
-    'div.post-main-action.post-main-like',
-    'Like'
+    "div.post-main-action.post-main-like",
+    "Like",
   );
-  if (typeof likeActionRaw !== 'string') {
+  if (typeof likeActionRaw !== "string") {
     likeActionEl = likeActionRaw as HTMLElement;
-    if (postData.liked) {
-      likeActionEl.classList.add('liked');
-    }
     likeActionEl.onclick = () => togglePostLike();
   }
 
+  // ---- 메인 포스트 attachments (간단 이미지 렌더) ----
+  const attachments = post.attachments;
+  let attachmentsNode: HTMLElement | string | null = null;
+
+  if (attachments && "images" in attachments && Array.isArray(attachments.images) && attachments.images.length) {
+    const imageNodes = attachments.images.map((src) =>
+      b("img.post-main-attachment-image", { src, loading: "lazy" }),
+    );
+    attachmentsNode = b(
+      "div.post-main-attachments",
+      ...imageNodes,
+    );
+  }
+
+  // ---- 메인 포스트 본문 ----
+  const profileHref = `/profile/${authorAddress}`;
+
   const mainPost = b(
-    'div.post-main',
-    b('div.post-avatar', postData.avatarInitial),
+    "div.post-main",
+    b("div.post-avatar", avatarInitial),
     b(
-      'div.post-main-body',
+      "div.post-main-body",
       b(
-        'div.post-main-header',
-        // 🔗 메인 작성자 → 프로필 링크
+        "div.post-main-header",
         b(
-          'a.post-main-author',
-          { href: `/profile/${mainProfileId}` },
-          postData.authorName
+          "a.post-main-author",
+          { href: profileHref },
+          authorShort,
         ),
-        b('div.post-main-handle', postData.handle)
+        b("div.post-main-handle", authorHandle),
       ),
-      b('div.post-main-content', postData.content),
+      b("div.post-main-content", post.content),
+      attachmentsNode || "",
       b(
-        'div.post-main-meta',
-        `${postData.time} · Shared with persona holders`
+        "div.post-main-meta",
+        `${timeLabel} · Shared with persona holders`,
       ),
       stats,
       b(
-        'div.post-main-actions',
-        b('div.post-main-action', 'Reply'),
-        b('div.post-main-action', 'Repost'),
-        likeActionRaw
-      )
-    )
+        "div.post-main-actions",
+        b("div.post-main-action", "Reply"),
+        b("div.post-main-action", "Repost"),
+        likeActionRaw,
+      ),
+    ),
   );
 
   // ---- 답글 작성 폼 ----
-  const replyInputRaw = b(
-    'textarea.post-reply-input',
-    {
-      placeholder: 'Reply to this post...'
-    }
-  );
-  if (typeof replyInputRaw !== 'string') {
+  const replyInputRaw = b("textarea.post-reply-input", {
+    placeholder: "Reply to this post...",
+  });
+  if (typeof replyInputRaw !== "string") {
     replyInputEl = replyInputRaw as HTMLTextAreaElement;
 
-    replyInputEl.addEventListener('input', () => {
+    replyInputEl.addEventListener("input", () => {
       const value = replyInputEl!.value.trim();
       if (replyButtonEl) {
         replyButtonEl.disabled = value.length === 0;
       }
     });
 
-    replyInputEl.addEventListener('keydown', (ev: KeyboardEvent) => {
-      if (ev.key === 'Enter' && !ev.shiftKey) {
+    replyInputEl.addEventListener("keydown", (ev: KeyboardEvent) => {
+      if (ev.key === "Enter" && !ev.shiftKey) {
         ev.preventDefault();
         handleReplySubmit();
       }
@@ -314,54 +276,52 @@ export function post(b: AnyBuilder) {
   }
 
   const replyButtonRaw = b(
-    'button.post-reply-btn',
+    "button.post-reply-btn",
     { disabled: true },
-    'Reply'
+    "Reply",
   );
-  if (typeof replyButtonRaw !== 'string') {
+  if (typeof replyButtonRaw !== "string") {
     replyButtonEl = replyButtonRaw as HTMLButtonElement;
     replyButtonEl.onclick = () => handleReplySubmit();
   }
 
   const replyComposer = b(
-    'div.post-reply-composer',
-    b('div.post-reply-avatar', 'Y'),
+    "div.post-reply-composer",
+    b("div.post-reply-avatar", "Y"),
     b(
-      'div.post-reply-main',
+      "div.post-reply-main",
       replyInputRaw,
-      b('div.post-reply-footer', replyButtonRaw)
-    )
+      b("div.post-reply-footer", replyButtonRaw),
+    ),
   );
 
-  // ---- 답글 리스트 컨테이너 + 초기 답글들 ----
-  const initialReplyNodes = replies.map((reply) => createReplyNode(reply));
+  // ---- 초기 답글 리스트 ----
+  const initialReplyNodes = replyViews.map((rv) => createReplyNode(rv));
 
-  const replyListRaw = b(
-    'div.post-replies',
-    ...initialReplyNodes
-  );
-  if (typeof replyListRaw !== 'string') {
+  const replyListRaw = b("div.post-replies", ...initialReplyNodes);
+  if (typeof replyListRaw !== "string") {
     replyListEl = replyListRaw as HTMLElement;
   }
 
   const repliesBlock = b(
-    'div',
-    b('div.post-replies-label', 'Replies'),
-    replyListRaw
+    "div",
+    b("div.post-replies-label", "Replies"),
+    replyListRaw,
   );
 
-  // ---- 전체 래퍼 조립 ----
+  // ---- 전체 래퍼 ----
   const root = b(
-    'section.post-wrapper',
+    "section.post-wrapper",
     b(
-      'div.post-inner',
+      "div.post-inner",
       header,
-      b('div.post-divider'),
+      b("div.post-divider"),
       mainPost,
       replyComposer,
-      repliesBlock
-    )
+      repliesBlock,
+    ),
   );
 
   return root;
 }
+

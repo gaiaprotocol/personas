@@ -32,8 +32,14 @@ import { openWalletLinkModal } from './modals/google-link-wallet-modal';
 import { sessionManager } from './auth/session-manager';
 
 // 🔹 프로필 타입/매니저
-import type { Profile } from './api/profile';
+import { fetchProfileWithPosts } from './api/profile';
 import { profileManager } from './services/profile-manager';
+
+// 🔹 타입 정의 (프로필)
+import type { Profile } from '../shared/types/profile';
+
+// 🔹 포스트 API
+import { fetchPostWithReplies } from './api/post';
 
 // 🔹 구글 로그아웃
 import { googleLogout } from './auth/google-login';
@@ -62,7 +68,8 @@ const backHandler = (event: BackButtonEvent) => {
   event.detail.register(0, () => {
     const hasHistory = window.history.length > 1;
     const isFromExternal =
-      document.referrer && !document.referrer.startsWith(window.location.origin);
+      document.referrer &&
+      !document.referrer.startsWith(window.location.origin);
     if (!hasHistory || isFromExternal) {
       document.removeEventListener('ionBackButton' as any, backHandler);
     }
@@ -142,15 +149,14 @@ function applyProfileAvatar(profile: Profile | null) {
       avatarContainer.style.height = '28px';
       avatarContainer.style.borderRadius = '999px';
       avatarContainer.style.overflow = 'hidden';
-      // padding/margin 건드리지 않음
       btn.appendChild(avatarContainer);
     }
 
     avatarContainer.innerHTML = '';
 
-    if (profile?.profile_image) {
+    if (profile?.avatarUrl) {
       const img = document.createElement('img');
-      img.src = profile.profile_image;
+      img.src = profile.avatarUrl;
       img.alt = profile.nickname || 'Profile';
       img.style.width = '100%';
       img.style.height = '100%';
@@ -173,7 +179,6 @@ function applyProfileAvatar(profile: Profile | null) {
 
 // =====================
 //   Shoelace 메뉴 (프로필/로그아웃)
-//   - <sl-menu> 사용 + data-action (gods 코드 스타일)
 // =====================
 
 let activeProfileMenu: HTMLElement | null = null;
@@ -277,7 +282,10 @@ async function tryAutoLinkIfNeeded(
 
   // 1) 구글 세션이 완전한 경우: 토큰 + 지갑주소 보유 → 바로 주입
   if (meResult?.ok && meResult.wallet_address && meResult.token) {
-    tokenManager.set(meResult.token, meResult.wallet_address as `0x${string}`);
+    tokenManager.set(
+      meResult.token,
+      meResult.wallet_address as `0x${string}`,
+    );
     return 'ok';
   }
 
@@ -295,11 +303,21 @@ async function tryAutoLinkIfNeeded(
       const linkRes = await oauthLinkWallet();
       if (linkRes?.ok) {
         if (linkRes.token && linkRes.wallet_address) {
-          tokenManager.set(linkRes.token, linkRes.wallet_address as `0x${string}`);
+          tokenManager.set(
+            linkRes.token,
+            linkRes.wallet_address as `0x${string}`,
+          );
         } else {
           const refreshed = await oauth2Me();
-          if (refreshed.ok && refreshed.token && refreshed.wallet_address) {
-            tokenManager.set(refreshed.token, refreshed.wallet_address as `0x${string}`);
+          if (
+            refreshed.ok &&
+            refreshed.token &&
+            refreshed.wallet_address
+          ) {
+            tokenManager.set(
+              refreshed.token,
+              refreshed.wallet_address as `0x${string}`,
+            );
           }
         }
         return 'ok';
@@ -334,7 +352,7 @@ async function ensureWalletLinkedOnStartup() {
 }
 
 // =====================
-//   라우트 정의
+//   라우트 정의 (SSR 유지 X)
 // =====================
 
 function setupRoutes() {
@@ -348,30 +366,75 @@ function setupRoutes() {
     setActiveTab('home');
   });
 
+  // 🔹 프로필 뷰 (/profile/:id)
   router.on('/profile/:id', (match: any) => {
     const { id } = match.data || {};
+    if (!id) return;
 
     setActiveTab('profile');
 
     const profileContent = document.getElementById('profile-tab-content');
-    if (profileContent) {
-      profileContent.innerHTML = '';
-      const profileTab = new ProfileTab(router.navigate.bind(router));
-      profileContent.appendChild(profileTab.el);
-    }
+    if (!profileContent) return;
+
+    profileContent.innerHTML =
+      '<div class="loading">Loading profile...</div>';
+
+    (async () => {
+      try {
+        const { profile, posts } = await fetchProfileWithPosts(id);
+
+        profileContent.innerHTML = '';
+        const profileTab = new ProfileTab(
+          profile,
+          posts,
+          router.navigate.bind(router),
+        );
+        profileContent.appendChild(profileTab.el);
+      } catch (err) {
+        console.error('[route:/profile/:id] failed to load', err);
+        profileContent.innerHTML =
+          '<div class="error">Failed to load profile. Please try again.</div>';
+      }
+    })();
   });
 
+  // 🔹 포스트 뷰 (/post/:id)
   router.on('/post/:id', (match: any) => {
     const { id } = match.data || {};
+    if (!id) return;
 
     setActiveTab('post');
 
     const postContent = document.getElementById('post-tab-content');
-    if (postContent) {
-      postContent.innerHTML = '';
-      const postTab = new PostTab(router.navigate.bind(router));
-      postContent.appendChild(postTab.el);
+    if (!postContent) return;
+
+    postContent.innerHTML =
+      '<div class="loading">Loading post...</div>';
+
+    const postId = Number(id);
+    if (!Number.isFinite(postId) || postId <= 0) {
+      postContent.innerHTML =
+        '<div class="error">Invalid post id.</div>';
+      return;
     }
+
+    (async () => {
+      try {
+        const { post, replyPosts } = await fetchPostWithReplies(postId);
+
+        postContent.innerHTML = '';
+        const postTab = new PostTab(
+          post,
+          replyPosts,
+          router.navigate.bind(router),
+        );
+        postContent.appendChild(postTab.el);
+      } catch (err) {
+        console.error('[route:/post/:id] failed to load', err);
+        postContent.innerHTML =
+          '<div class="error">Failed to load post. Please try again.</div>';
+      }
+    })();
   });
 
   router.notFound(() => {
@@ -399,7 +462,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 🔹 tokenManager 이벤트 기반 아바타 갱신
-    //   (client-common의 tokenManager가 on/off를 지원하지 않는다면 이 부분은 제거 필요)
     (tokenManager as any).on?.('signedIn', async () => {
       await profileManager.init();
       applyProfileAvatar(profileManager.profile);
@@ -409,10 +471,10 @@ document.addEventListener('DOMContentLoaded', () => {
       applyProfileAvatar(null);
     });
 
+    const navigate = (path: string) => router.navigate(path);
+
     // 3) 라우터 및 나머지 UI 초기화
     setupRoutes();
-
-    const navigate = (path: string) => router.navigate(path);
 
     // 프로필 버튼 클릭: 로그인 여부에 따라 분기
     const profileBtns = document.querySelectorAll<HTMLElement>('#open-profile');
@@ -447,7 +509,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    const tabButtons = document.querySelectorAll('#main-tab-bar ion-tab-button');
+    const tabButtons = document.querySelectorAll(
+      '#main-tab-bar ion-tab-button',
+    );
     tabButtons.forEach((btn) => {
       const tabKey = btn.getAttribute('data-tab');
       if (!tabKey) return;
@@ -488,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Explore CTA
     const exploreButtons = document.querySelectorAll(
-      '[data-action="explore-personas"]'
+      '[data-action="explore-personas"]',
     );
     exploreButtons.forEach((btn) => {
       btn.addEventListener('click', (e) => {
@@ -512,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Edit Profile 버튼 → 프로필 수정 모달
     document.body.addEventListener('click', async (event) => {
       const target = (event.target as HTMLElement).closest(
-        '[data-action="edit-profile"]'
+        '[data-action="edit-profile"]',
       ) as HTMLElement | null;
 
       if (!target) return;
@@ -523,7 +587,11 @@ document.addEventListener('DOMContentLoaded', () => {
         target.getAttribute('data-address') ||
         '0x0000000000000000000000000000000000000000';
 
-      const token = 'TEMP_AUTH_TOKEN'; // TODO: 실제 토큰으로 교체
+      const token = tokenManager.getToken();
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
 
       const modal = createEditProfileModal(address as `0x${string}`, token);
       document.body.appendChild(modal);
@@ -549,7 +617,9 @@ document.addEventListener('DOMContentLoaded', () => {
       chatContent.appendChild(chatTab.el);
     }
 
-    const notificationsContent = document.getElementById('notifications-tab-content');
+    const notificationsContent = document.getElementById(
+      'notifications-tab-content',
+    );
     if (notificationsContent) {
       const notificationsTab = new NotificationsTab(navigate);
       notificationsContent.appendChild(notificationsTab.el);

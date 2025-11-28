@@ -1,12 +1,18 @@
 import { el } from '@webtaku/el';
-import { profile } from '../../shared/views/profile';
+import { PersonaPost } from '../../shared/types/post';
+import { Profile } from '../../shared/types/profile';
+import { profile as profileTemplate } from '../../shared/views/profile';
 
 export class ProfileTab {
-  el = profile(el) as HTMLElement;
-
+  el: HTMLElement;
   private navigate?: (path: string) => void;
 
-  constructor(navigate?: (path: string) => void) {
+  constructor(
+    profile: Profile,
+    posts: PersonaPost[],
+    navigate?: (path: string) => void,
+  ) {
+    this.el = profileTemplate(el, profile, posts) as HTMLElement;
     this.navigate = navigate;
     this.setupInternalLinks();
   }

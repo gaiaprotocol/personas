@@ -1,12 +1,17 @@
 import { el } from '@webtaku/el';
-import { post } from '../../shared/views/post';
+import { PersonaPost } from '../../shared/types/post';
+import { post as postTemplate } from '../../shared/views/post';
 
 export class PostTab {
-  el = post(el) as HTMLElement;
-
+  el: HTMLElement;
   private navigate?: (path: string) => void;
 
-  constructor(navigate?: (path: string) => void) {
+  constructor(
+    post: PersonaPost,
+    replyPosts: PersonaPost[],
+    navigate?: (path: string) => void,
+  ) {
+    this.el = postTemplate(el, post, replyPosts) as HTMLElement;
     this.navigate = navigate;
     this.setupInternalLinks();
   }

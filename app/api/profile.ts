@@ -1,4 +1,6 @@
 import { getAddress } from 'viem';
+import { PersonaPost } from '../../shared/types/post';
+import { Profile, SocialLinks } from '../../shared/types/profile';
 
 declare const GAIA_API_BASE_URI: string;
 
@@ -6,16 +8,9 @@ export type SaveProfileInput = {
   // 전부 optional — 일부만 보냈을 때 서버에서 기존 값 유지
   nickname?: string;
   bio?: string;
-  profile_image?: string;
-};
-
-export type Profile = {
-  account: string;            // EVM 주소 (체크섬)
-  nickname: string | null;
-  bio: string | null;
-  profile_image: string | null;
-  created_at?: number;        // 서버 스키마가 epoch seconds
-  updated_at?: number | null;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  socialLinks?: SocialLinks;
 };
 
 export type SaveProfileResult = { ok: true };
@@ -40,9 +35,10 @@ function assertValidProfileInput(input: SaveProfileInput) {
   if (
     input.nickname === undefined &&
     input.bio === undefined &&
-    input.profile_image === undefined
+    input.avatarUrl === undefined &&
+    input.bannerUrl === undefined
   ) {
-    throw new Error('At least one of nickname, bio, or profile_image must be provided.');
+    throw new Error('At least one of nickname, bio, avatarUrl, or bannerUrl must be provided.');
   }
 
   if (input.nickname !== undefined) {
@@ -66,18 +62,18 @@ function assertValidProfileInput(input: SaveProfileInput) {
     }
   }
 
-  if (input.profile_image !== undefined) {
-    const url = input.profile_image.trim();
+  if (input.avatarUrl !== undefined) {
+    const url = input.avatarUrl.trim();
     if (url.length > MAX_URL_LEN) {
-      throw new Error(`profile_image URL exceeds maximum length of ${MAX_URL_LEN}.`);
+      throw new Error(`avatarUrl URL exceeds maximum length of ${MAX_URL_LEN}.`);
     }
     try {
       const u = new URL(url);
       if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-        throw new Error('Only http(s) URLs are allowed for profile_image.');
+        throw new Error('Only http(s) URLs are allowed for avatarUrl.');
       }
     } catch {
-      throw new Error('profile_image must be a valid URL.');
+      throw new Error('avatarUrl must be a valid URL.');
     }
   }
 }
@@ -165,4 +161,45 @@ export async function fetchProfileByAccount(account: string): Promise<Profile> {
   }
 
   return (await res.json()) as Profile;
+}
+
+export type ProfileWithPostsResult = {
+  profile: Profile;
+  posts: PersonaPost[];
+};
+
+/**
+ * 특정 지갑 주소의 프로필 + 포스트 목록 조회
+ * 서버 엔드포인트: GET /profile-with-posts?address=<EVM 주소>
+ */
+export async function fetchProfileWithPosts(
+  account: string,
+): Promise<ProfileWithPostsResult> {
+  if (!account) throw new Error('Missing account address.');
+
+  const checksummedAccount = getAddress(account);
+
+  const url = `${GAIA_API_BASE_URI}/profile-with-posts?address=${encodeURIComponent(
+    checksummedAccount,
+  )}`;
+
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    let message = `Failed to fetch profile with posts: ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data?.error) message = data.error;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(message);
+  }
+
+  return (await res.json()) as ProfileWithPostsResult;
 }

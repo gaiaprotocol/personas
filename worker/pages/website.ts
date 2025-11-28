@@ -1,4 +1,6 @@
 import { h } from '@webtaku/h';
+import { PersonaPost } from '../../shared/types/post';
+import { Profile } from '../../shared/types/profile';
 import { post } from '../../shared/views/post';
 import { profile } from '../../shared/views/profile';
 import { bottomBar } from './bottom-bar';
@@ -9,10 +11,12 @@ import { topBar } from './top-bar';
 
 function website(search: string, data?: {
   type: 'post',
-  post: { id: string }
+  post: PersonaPost,
+  replyPosts: PersonaPost[],
 } | {
   type: 'profile',
-  profile: { walletAddress: string }
+  profile: Profile,
+  posts: PersonaPost[],
 }) {
   return (
     '<!DOCTYPE html>' +
@@ -65,14 +69,14 @@ function website(search: string, data?: {
               'ion-tab',
               { tab: 'post' },
               topBar,
-              h('ion-content.main-content#post-tab-content', data?.type === 'post' ? post(h) : undefined),
+              h('ion-content.main-content#post-tab-content', data?.type === 'post' ? post(h, data.post, data.replyPosts) : undefined),
             ),
 
             h(
               'ion-tab',
               { tab: 'profile' },
               topBar,
-              h('ion-content.main-content#profile-tab-content', data?.type === 'profile' ? profile(h) : undefined),
+              h('ion-content.main-content#profile-tab-content', data?.type === 'profile' ? profile(h, data.profile, data.posts) : undefined),
             ),
 
             bottomBar,

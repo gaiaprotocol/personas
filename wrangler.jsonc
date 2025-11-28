@@ -20,23 +20,13 @@
 	"vars": {
 		"ENV_TYPE": "prod"
 	},
+	"services": [
+		{
+			"binding": "API_WORKER",
+			"service": "api"
+		}
+	],
 	"env": {
-		"development": {
-			"assets": {
-				"directory": "./public-dev",
-				"not_found_handling": "single-page-application"
-			},
-			"d1_databases": [
-				{
-					"binding": "DB",
-					"database_name": "gaiaprotocol",
-					"database_id": "63a6e619-98ad-482d-8ae5-448510ed9eb5"
-				}
-			],
-			"vars": {
-				"ENV_TYPE": "dev"
-			}
-		},
 		"testnet": {
 			"assets": {
 				"directory": "./public-testnet",
@@ -51,7 +41,13 @@
 			],
 			"vars": {
 				"ENV_TYPE": "testnet"
-			}
+			},
+			"services": [
+				{
+					"binding": "API_WORKER",
+					"service": "api-testnet"
+				}
+			]
 		}
 	}
 }

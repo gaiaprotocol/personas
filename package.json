@@ -5,8 +5,8 @@
   "scripts": {
     "build": "NODE_ENV=production webpack --mode=production",
     "build-testnet": "NODE_ENV=testnet webpack --mode=production",
-    "dev": "concurrently -k \"webpack --watch --mode=development\" \"wrangler dev --env development --port=8081\"",
-    "start": "concurrently -k \"webpack --watch --mode=development\" \"wrangler dev --env development --port=8081\"",
+    "dev": "concurrently -k \"webpack --watch --mode=development\" \"wrangler dev -c wrangler.dev.jsonc --port=8081\"",
+    "start": "concurrently -k \"webpack --watch --mode=development\" \"wrangler dev -c wrangler.dev.jsonc --port=8081\"",
     "test": "vitest",
     "cf-typegen": "wrangler types"
   },

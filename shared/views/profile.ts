@@ -1,96 +1,38 @@
+import { PersonaPost } from "../types/post";
+import { Profile } from "../types/profile";
 import { AnyBuilder } from "./b";
+import { avatarInitialFromName, formatRelativeTimeFromSeconds, shortenAddress } from "./utils";
 
-export interface ProfileData {
-  name: string;
-  bio: string;
-  address: string;
-  avatarInitial: string;
-  stats: {
-    holders: number;
-    volumeUsd: number;
-    followers: number;
-  };
-}
+export function profile(
+  b: AnyBuilder,
+  profile: Profile,
+  posts: PersonaPost[],
+) {
+  const displayName =
+    profile.nickname && profile.nickname.trim().length > 0
+      ? profile.nickname.trim()
+      : shortenAddress(profile.account);
+  const bio =
+    profile.bio && profile.bio.trim().length > 0
+      ? profile.bio.trim()
+      : "No bio yet.";
+  const fullAddress = profile.account;
+  const shortAddress = shortenAddress(profile.account, 6);
+  const avatarInitial = avatarInitialFromName(displayName);
 
-interface SocialLink {
-  id: string;
-  label: string;
-  icon: string; // Ionicon name
-  href?: string;
-}
+  const createdDate = new Date(profile.createdAt ?? 0 * 1000);
+  const memberSince = createdDate.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+  });
 
-interface Post {
-  id: string;
-  content: string;
-  timeAgo: string;
-}
+  const totalPosts = posts.length;
+  const totalLikes = posts.reduce(
+    (acc, p) => acc + (p.likeCount ?? 0),
+    0,
+  );
 
-// 외부에서 넘길 수 있는 형태
-export interface ProfileViewProps {
-  profileData?: Partial<ProfileData>;
-  socialLinks?: SocialLink[];
-  posts?: Post[];
-}
-
-export function profile(b: AnyBuilder, props?: ProfileViewProps) {
-  // ===== 기본값 (샘플 데이터) =====
-  const defaultProfileData: ProfileData = {
-    name: "Alex Chen",
-    bio: "Web3 builder & persona fragment creator. Building the future of decentralized identity.",
-    address: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
-    avatarInitial: "A",
-    stats: {
-      holders: 342,
-      volumeUsd: 15420,
-      followers: 1234,
-    },
-  };
-
-  const defaultSocialLinks: SocialLink[] = [
-    {
-      id: "twitter",
-      label: "Twitter",
-      icon: "logo-twitter",
-      href: "https://x.com",
-    },
-    {
-      id: "discord",
-      label: "Discord",
-      icon: "logo-discord",
-      href: "https://discord.com",
-    },
-    {
-      id: "website",
-      label: "Website",
-      icon: "globe-outline",
-      href: "https://example.com",
-    },
-  ];
-
-  const defaultPosts: Post[] = [
-    {
-      id: "post-1",
-      content: "Just dropped something exciting! Check it out 🚀",
-      timeAgo: "2 hours ago",
-    },
-    {
-      id: "post-2",
-      content: "Just dropped something exciting! Check it out 🚀",
-      timeAgo: "2 hours ago",
-    },
-  ];
-
-  const mergedProfileData: ProfileData = {
-    ...defaultProfileData,
-    ...(props?.profileData ?? {}),
-    stats: {
-      ...defaultProfileData.stats,
-      ...(props?.profileData?.stats ?? {}),
-    },
-  };
-
-  const socialLinks: SocialLink[] = props?.socialLinks ?? defaultSocialLinks;
-  const posts: Post[] = props?.posts ?? defaultPosts;
+  const socialLinks = profile.socialLinks ?? {};
 
   // ===== Hero / 메인 프로필 카드 =====
   const editButton = b(
@@ -98,7 +40,7 @@ export function profile(b: AnyBuilder, props?: ProfileViewProps) {
     {
       type: "button",
       "data-action": "edit-profile",
-      "data-address": mergedProfileData.address,
+      "data-address": fullAddress,
     },
     "Edit Profile",
   );
@@ -107,12 +49,12 @@ export function profile(b: AnyBuilder, props?: ProfileViewProps) {
     "section.profile-card.profile-main-card",
     b(
       "div.profile-main",
-      b("div.profile-avatar", mergedProfileData.avatarInitial),
+      b("div.profile-avatar", avatarInitial),
       b(
         "div.profile-main-text",
-        b("div.profile-name", mergedProfileData.name),
-        b("div.profile-bio", mergedProfileData.bio),
-        b("div.profile-address", mergedProfileData.address),
+        b("div.profile-name", displayName),
+        b("div.profile-bio", bio),
+        b("div.profile-address", shortAddress),
       ),
     ),
   );
@@ -129,49 +71,76 @@ export function profile(b: AnyBuilder, props?: ProfileViewProps) {
     "div.profile-stats-row",
     b(
       "div.profile-stat-card",
-      b("div.profile-stat-label", "Holders"),
-      b(
-        "div.profile-stat-value",
-        mergedProfileData.stats.holders.toLocaleString(),
-      ),
+      b("div.profile-stat-label", "Posts"),
+      b("div.profile-stat-value", totalPosts.toLocaleString()),
     ),
     b(
       "div.profile-stat-card",
-      b("div.profile-stat-label", "Volume"),
-      b(
-        "div.profile-stat-value",
-        `$${mergedProfileData.stats.volumeUsd.toLocaleString()}`,
-      ),
+      b("div.profile-stat-label", "Total Likes"),
+      b("div.profile-stat-value", totalLikes.toLocaleString()),
     ),
     b(
       "div.profile-stat-card",
-      b("div.profile-stat-label", "Followers"),
-      b(
-        "div.profile-stat-value",
-        mergedProfileData.stats.followers.toLocaleString(),
-      ),
+      b("div.profile-stat-label", "Member Since"),
+      b("div.profile-stat-value", memberSince),
     ),
   );
 
   // ===== Connect With Me (소셜 링크 카드) =====
-  const socialLinkNodes = socialLinks.map((link) =>
-    b(
-      link.href ? "a.profile-social-row" : "div.profile-social-row",
-      link.href
-        ? {
-          href: link.href,
+  const socialItems: {
+    key: string;
+    label: string;
+    icon: string;
+  }[] = [
+      {
+        key: "twitter",
+        label: "Twitter / X",
+        icon: "logo-twitter",
+      },
+      {
+        key: "discord",
+        label: "Discord",
+        icon: "logo-discord",
+      },
+      {
+        key: "website",
+        label: "Website",
+        icon: "link-outline",
+      },
+    ];
+
+  const socialLinkNodes: (HTMLElement | string)[] = socialItems
+    .filter((item) => !!socialLinks[item.key])
+    .map((item) => {
+      const href = socialLinks[item.key]!;
+      return b(
+        "a.profile-social-row",
+        {
+          href,
           target: "_blank",
           rel: "noreferrer noopener",
-        } as any
-        : {},
+        } as any,
+        b(
+          "div.profile-social-left",
+          b("ion-icon.profile-social-icon", { name: item.icon }),
+          b("span.profile-social-label", item.label),
+        ),
+        b("ion-icon.profile-social-open-icon", { name: "open-outline" }),
+      );
+    });
+
+  // 소셜 링크가 하나도 없으면 placeholder
+  if (socialLinkNodes.length === 0) {
+    socialLinkNodes.push(
       b(
-        "div.profile-social-left",
-        b("ion-icon.profile-social-icon", { name: link.icon }),
-        b("span.profile-social-label", link.label),
+        "div.profile-social-row.profile-social-empty",
+        b(
+          "div.profile-social-left",
+          b("span.profile-social-label", "No social links yet."),
+        ),
       ),
-      b("ion-icon.profile-social-open-icon", { name: "open-outline" }),
-    ),
-  );
+    );
+  }
 
   const connectCard = b(
     "section.profile-card.profile-connect-card",
@@ -179,22 +148,33 @@ export function profile(b: AnyBuilder, props?: ProfileViewProps) {
     b("div.profile-social-list", ...socialLinkNodes),
   );
 
-  // ===== Recent Posts 카드 (🔗 href=/post/:id) =====
-  const postRows = posts.map((post) =>
-    b(
+  // ===== Recent Posts 카드 (href=/post/:id) =====
+  const postRows = posts.map((post) => {
+    const contentPreview =
+      post.content.length > 140
+        ? `${post.content.slice(0, 140)}…`
+        : post.content;
+
+    const meta = `${formatRelativeTimeFromSeconds(
+      post.createdAt,
+    )} · ❤ ${post.likeCount ?? 0} · 💬 ${post.commentCount ?? 0}`;
+
+    return b(
       "a.profile-post-row",
       {
         href: `/post/${post.id}`,
       },
-      b("div.profile-post-content", post.content),
-      b("div.profile-post-meta", post.timeAgo),
-    ),
-  );
+      b("div.profile-post-content", contentPreview),
+      b("div.profile-post-meta", meta),
+    );
+  });
 
   const postsCard = b(
     "section.profile-card.profile-posts-card",
     b("h2.profile-card-title", "Recent Posts"),
-    b("div.profile-posts-list", ...postRows),
+    postRows.length
+      ? b("div.profile-posts-list", ...postRows)
+      : b("div.profile-posts-empty", "No posts yet."),
   );
 
   // ===== 전체 조립 =====

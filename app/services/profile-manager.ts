@@ -1,8 +1,8 @@
 import { tokenManager } from '@gaiaprotocol/client-common';
+import { Profile } from '../../shared/types/profile';
 import {
   fetchMyProfile,
   saveMyProfile,
-  type Profile,
   type SaveProfileInput,
 } from '../api/profile';
 

@@ -1,0 +1,29 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "personas",
+	"main": "worker/index.ts",
+	"compatibility_date": "2025-07-12",
+	"assets": {
+		"directory": "./public-dev",
+		"not_found_handling": "single-page-application"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "gaiaprotocol",
+			"database_id": "63a6e619-98ad-482d-8ae5-448510ed9eb5"
+		}
+	],
+	"observability": {
+		"enabled": true
+	},
+	"vars": {
+		"ENV_TYPE": "dev"
+	},
+	"services": [
+		{
+			"binding": "API_WORKER",
+			"service": "api"
+		}
+	]
+}
