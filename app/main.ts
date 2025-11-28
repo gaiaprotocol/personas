@@ -255,6 +255,8 @@ function openProfileMenu(anchorBtn: HTMLElement) {
         // ignore
       }
       tokenManager.clear();
+
+      router.navigate('/');
     }
   });
 

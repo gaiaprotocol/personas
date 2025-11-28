@@ -5,11 +5,15 @@
 	"compatibility_date": "2025-07-12",
 	"assets": {
 		"directory": "./public",
-		"not_found_handling": "single-page-application",
-		"run_worker_first": [
-			"/api/*"
-		]
+		"not_found_handling": "single-page-application"
 	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "gaiaprotocol",
+			"database_id": "63a6e619-98ad-482d-8ae5-448510ed9eb5"
+		}
+	],
 	"observability": {
 		"enabled": true
 	},
@@ -20,11 +24,15 @@
 		"development": {
 			"assets": {
 				"directory": "./public-dev",
-				"not_found_handling": "single-page-application",
-				"run_worker_first": [
-					"/api/*"
-				]
+				"not_found_handling": "single-page-application"
 			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "gaiaprotocol",
+					"database_id": "63a6e619-98ad-482d-8ae5-448510ed9eb5"
+				}
+			],
 			"vars": {
 				"ENV_TYPE": "dev"
 			}
@@ -32,11 +40,15 @@
 		"testnet": {
 			"assets": {
 				"directory": "./public-testnet",
-				"not_found_handling": "single-page-application",
-				"run_worker_first": [
-					"/api/*"
-				]
+				"not_found_handling": "single-page-application"
 			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "gaiaprotocol_testnet",
+					"database_id": "ff77a5c8-4f84-4ec1-91d3-d4a7c16a5fab"
+				}
+			],
 			"vars": {
 				"ENV_TYPE": "testnet"
 			}
