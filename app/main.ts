@@ -32,12 +32,12 @@ import { openWalletLinkModal } from './modals/google-link-wallet-modal';
 import { sessionManager } from './auth/session-manager';
 
 // 🔹 프로필 타입/매니저
+import type { Profile } from '../shared/types/profile';
 import { fetchProfileWithPosts } from './api/profile';
 import { profileManager } from './services/profile-manager';
-import type { Profile } from '../shared/types/profile';
 
 // 🔹 포스트 API
-import { fetchPostWithReplies } from './api/post';
+import { fetchPersonaPostWithReplies } from './api/post';
 
 // 🔹 구글 로그아웃
 import { googleLogout } from './auth/google-login';
@@ -418,13 +418,16 @@ function setupRoutes() {
 
     (async () => {
       try {
-        const { post, replyPosts } = await fetchPostWithReplies(postId);
+        const { post, replies } = await fetchPersonaPostWithReplies(postId);
 
         postContent.innerHTML = '';
         const postTab = new PostTab(
           post,
-          replyPosts,
-          router.navigate.bind(router),
+          replies,
+          {
+            navigate: router.navigate.bind(router),
+            getAuthToken: tokenManager.getToken.bind(tokenManager),
+          }
         );
         postContent.appendChild(postTab.el);
       } catch (err) {
@@ -641,7 +644,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const feedContent = document.getElementById('feed-tab-content');
     if (feedContent) {
-      const feedTab = new FeedTab(navigate);
+      const feedTab = new FeedTab({
+        navigate,
+        getAuthToken: tokenManager.getToken.bind(tokenManager),
+        currentAccount: tokenManager.getAddress(),
+      });
       feedContent.appendChild(feedTab.el);
     }
 

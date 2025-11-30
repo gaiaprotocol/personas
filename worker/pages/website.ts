@@ -1,10 +1,10 @@
 import { h } from '@webtaku/h';
 import { PersonaPost } from '../../shared/types/post';
 import { Profile } from '../../shared/types/profile';
-import { post } from '../../shared/views/post';
-import { profile } from '../../shared/views/profile';
+import { profile } from '../../shared/ui/profile';
 import { bottomBar } from './bottom-bar';
 import { head } from './head';
+import { postPage } from './post';
 import { scripts } from './scripts';
 import { homeTab } from './tabs/home';
 import { topBar } from './top-bar';
@@ -12,7 +12,7 @@ import { topBar } from './top-bar';
 function website(search: string, data?: {
   type: 'post',
   post: PersonaPost,
-  replyPosts: PersonaPost[],
+  replies: PersonaPost[],
 } | {
   type: 'profile',
   profile: Profile,
@@ -69,7 +69,7 @@ function website(search: string, data?: {
               'ion-tab',
               { tab: 'post' },
               topBar,
-              h('ion-content.main-content#post-tab-content', data?.type === 'post' ? post(h, data.post, data.replyPosts) : undefined),
+              h('ion-content.main-content#post-tab-content', data?.type === 'post' ? postPage(h, data.post, data.replies) : undefined),
             ),
 
             h(

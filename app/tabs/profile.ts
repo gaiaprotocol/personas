@@ -1,7 +1,7 @@
 import { el } from '@webtaku/el';
 import { PersonaPost } from '../../shared/types/post';
 import { Profile } from '../../shared/types/profile';
-import { profile as profileTemplate } from '../../shared/views/profile';
+import { profile as profileTemplate } from '../../shared/ui/profile';
 
 export class ProfileTab {
   el: HTMLElement;

@@ -1,5 +1,5 @@
 import { el } from '@webtaku/el';
-import { profile as profileTemplate } from '../../shared/views/profile'; // (builder, profile, posts)
+import { profile as profileTemplate } from '../../shared/ui/profile'; // (builder, profile, posts)
 import './profile.css';
 
 import type { PersonaPost } from '../../shared/types/post';

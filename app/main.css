@@ -2,8 +2,8 @@
 @import "@ionic/core/css/ionic.bundle.css";
 @import "@ionic/core/css/palettes/dark.always.css";
 @import "./theme.css";
-@import "../shared/views/profile.css";
-@import "../shared/views/post.css";
+@import "../shared/ui/profile.css";
+@import "../shared/ui/post.css";
 
 :root {
   --ion-color-primary: #C1A87D;

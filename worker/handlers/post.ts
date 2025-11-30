@@ -12,7 +12,7 @@ export async function renderPostPage(
     return new Response("Invalid Post ID", { status: 400 });
   }
 
-  const data = await (env.API_WORKER as any).getPostWithReplies(postId);
+  const data = await (env.API_WORKER as any).getPersonaPostWithReplies(postId);
   if (!data) {
     return new Response("Post Not Found", { status: 404 });
   }
@@ -23,7 +23,7 @@ export async function renderPostPage(
     website(url.search, {
       type: "post",
       post: data.post,
-      replyPosts: data.replyPosts,
+      replies: data.replies,
     }),
     { headers: { "Content-Type": "text/html" } },
   );

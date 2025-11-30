@@ -1,0 +1,521 @@
+:root {
+  --bg-page: #000000;
+  --bg-card: #101010;
+  --bg-card-soft: #141414;
+  --bg-card-hover: #171717;
+  --border-color: #222222;
+  --border-subtle: #181818;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --muted-foreground: #777777;
+  --accent-yellow: #f4d03f;
+  --accent-green: #2ecc71;
+  --accent-blue: #1da1f2;
+}
+
+/* 상세 페이지 래퍼 ------------------------------------------------------ */
+
+.post-wrapper {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.post-inner {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* 상단 헤더 */
+
+.post-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.post-back-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.post-back-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.post-back-icon {
+  width: 9px;
+  height: 9px;
+  border-style: solid;
+  border-width: 0 0 2px 2px;
+  border-color: currentColor;
+  transform: rotate(45deg);
+  margin-right: 1px;
+}
+
+.post-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* 구분선 */
+
+.post-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0.75rem 0;
+}
+
+/* ======================= 공통: 카드(Feed/Profile) ===================== */
+/* shared/ui/post.ts 의 postCard 구조에 맞춘 스타일 */
+
+.post-card {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.9rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease,
+    transform 0.04s ease;
+}
+
+.post-card:last-child {
+  border-bottom: none;
+}
+
+/* Feed에서 사용될 기본 카드 */
+
+.post-card.post-card--feed {
+  background: transparent;
+}
+
+.post-card.post-card--feed:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Profile 화면에서 쓰는 카드 */
+
+.post-card.post-card--profile {
+  background: var(--bg-card);
+  border-radius: 16px;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.post-card.post-card--profile:hover {
+  background: var(--bg-card-hover);
+}
+
+/* compact 옵션 (필요 시 간격만 살짝 줄임) */
+
+.post-card.post-card--compact {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+/* 아바타 / 메인 레이아웃 */
+
+.post-card-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.post-card-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 헤더 (주소/핸들/시간) */
+
+.post-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.post-card-author {
+  font-weight: 600;
+}
+
+.post-card-handle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.post-card-dot {
+  font-size: 0.78rem;
+  color: #555;
+}
+
+.post-card-time {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* 본문 */
+
+.post-card-content {
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+/* 하단 액션 (댓글/리포스트/좋아요/...) */
+
+.post-card-footer {
+  display: flex;
+  gap: 1.7rem;
+  margin-top: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.post-card-action {
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.post-card-action:hover {
+  color: #aaaaaa;
+}
+
+/* 좋아요 on/off */
+
+.post-card-action[data-liked="true"],
+.post-card-action.liked {
+  color: var(--accent-green);
+}
+
+/* 내 글 더보기 */
+
+.post-card-more {
+  margin-left: auto;
+}
+
+/* =================== 상세 페이지용 메인 포스트 ======================== */
+
+.post-main {
+  padding: 0.6rem 0 0.75rem;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.post-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.post-main-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 이름/핸들 */
+
+.post-main-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.post-main-author {
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.post-main-handle {
+  font-size: 0.82rem;
+  color: #777;
+}
+
+/* 본문 텍스트 */
+
+.post-main-content {
+  margin-top: 0.6rem;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* 시간/메타 정보 */
+
+.post-main-meta {
+  margin-top: 0.9rem;
+  font-size: 0.8rem;
+  color: #777;
+}
+
+/* 수치(좋아요/리포스트/답글 등) */
+
+.post-main-stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.85rem;
+}
+
+.post-main-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.post-main-stat-strong {
+  font-weight: 600;
+}
+
+/* 액션바 */
+
+.post-main-actions {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.9rem;
+  color: #777;
+}
+
+.post-main-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.post-main-action:hover {
+  color: #aaaaaa;
+}
+
+.post-main-like.liked,
+.post-main-action.post-main-like[data-liked="true"] {
+  color: var(--accent-green);
+}
+
+/* ======================= 답글 작성 폼 ================================ */
+
+.post-reply-composer {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0 0.6rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.post-reply-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.post-reply-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.post-reply-input {
+  width: 100%;
+  min-height: 44px;
+  max-height: 140px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  outline: none;
+  resize: vertical;
+  padding: 0.65rem 0.9rem;
+  box-sizing: border-box;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+
+.post-reply-input::placeholder {
+  color: #555;
+}
+
+.post-reply-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.post-reply-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.4rem;
+}
+
+.post-reply-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.35rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.post-reply-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ======================= 답글 리스트 ================================ */
+
+.post-replies {
+  display: flex;
+  flex-direction: column;
+}
+
+.post-replies-label {
+  font-size: 0.8rem;
+  color: #777;
+  padding: 0.6rem 0 0.2rem;
+}
+
+/* 개별 답글 */
+
+.post-reply-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.post-reply-avatar-small {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.post-reply-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.post-reply-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.post-reply-author {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.post-reply-handle {
+  font-size: 0.78rem;
+  color: #777;
+}
+
+.post-reply-time {
+  font-size: 0.78rem;
+  color: #777;
+}
+
+.post-reply-content {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.post-reply-like {
+  margin-top: 0.3rem;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.78rem;
+  color: #777;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  cursor: pointer;
+}
+
+.post-reply-like:hover {
+  color: #aaaaaa;
+}
+
+.post-reply-like[data-liked="true"],
+.post-reply-like.liked {
+  color: var(--accent-green);
+}
+
+/* 반응형 --------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .post-wrapper {
+    padding: 1.25rem 1rem;
+  }
+
+  .post-inner {
+    max-width: 100%;
+  }
+
+  .post-card {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+  }
+}

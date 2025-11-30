@@ -8,7 +8,7 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname.replace(/\/+$/, "");
 
-    if (pathname === "/api/envtype") {
+    if (pathname === "/envtype") {
       return new Response(env.ENV_TYPE);
     }
 

@@ -2691,15 +2691,30 @@ img.jazzicon {
   box-shadow: var(--sl-shadow-large);
 }
 
-/* ===== 전체 레이아웃 ===== */
+:root {
+  --bg-page: #000000;
+  --bg-card: #101010;
+  --bg-card-soft: #141414;
+  --border-color: #222222;
+  --border-subtle: #181818;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --accent-yellow: #f4d03f;
+  --accent-green: #2ecc71;
+  --accent-blue: #1da1f2;
+}
+
+/* 전체 래퍼 ------------------------------------------------------------- */
+
 .profile-wrapper {
-  background: #000;
-  color: #fff;
+  background: var(--bg-page);
+  color: var(--text-primary);
   min-height: 100vh;
   padding: 1.5rem;
   display: flex;
   justify-content: center;
   box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .profile-inner {
@@ -2710,12 +2725,14 @@ img.jazzicon {
   gap: 1.5rem;
 }
 
-/* ===== 상단 히어로 영역 ===== */
+/* 상단 히어로 ----------------------------------------------------------- */
+
 .profile-hero {
   position: relative;
 }
 
-/* 회색 배너 영역 (이미지 들어갈 자리) */
+/* 커버 이미지 자리 */
+
 .profile-cover {
   background: #111;
   border-radius: 16px;
@@ -2723,11 +2740,12 @@ img.jazzicon {
 }
 
 /* Edit Profile 버튼 */
+
 .profile-edit-btn {
   position: absolute;
   top: 16px;
   right: 18px;
-  background: #00b894;
+  background: var(--accent-green);
   color: #000;
   font-weight: 600;
   border: none;
@@ -2735,39 +2753,44 @@ img.jazzicon {
   padding: 0.45rem 1.1rem;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: transform 0.12s ease, opacity 0.12s ease;
+  transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease;
 }
 
 .profile-edit-btn:hover {
-  opacity: 0.9;
+  opacity: 0.93;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07);
   transform: translateY(-1px);
 }
 
-/* ===== 공통 카드 ===== */
+/* 공통 카드 */
+
 .profile-card {
-  background: #050505;
+  background: var(--bg-card);
   border-radius: 16px;
-  border: 1px solid #1b1b1b;
+  border: 1px solid var(--border-color);
   padding: 1.5rem;
 }
 
-/* 메인 프로필 카드 (배너 위로 떠 있는 블럭) */
+/* 메인 프로필 카드 (커버 위로 올라온 카드) */
+
 .profile-main-card {
   position: absolute;
   left: 20px;
   right: 20px;
   top: 60px;
-  background: #050505;
+  background: var(--bg-card);
   border-radius: 18px;
   padding: 1.5rem 1.75rem;
 }
 
-/* 메인 카드가 겹치는 만큼 아래 여백 */
+/* 메인 카드 높이만큼 아래쪽 여백 */
+
 .profile-content-offset {
   margin-top: 64px;
 }
 
-/* ===== 프로필 기본 정보 ===== */
+/* 기본 정보 ------------------------------------------------------------- */
+
 .profile-main {
   display: flex;
   gap: 1rem;
@@ -2800,7 +2823,7 @@ img.jazzicon {
 }
 
 .profile-bio {
-  color: #b3b3b3;
+  color: var(--text-secondary);
   font-size: 0.95rem;
 }
 
@@ -2811,7 +2834,8 @@ img.jazzicon {
   word-break: break-all;
 }
 
-/* ===== 통계 카드 ===== */
+/* 통계 카드 ------------------------------------------------------------- */
+
 .profile-stats-row {
   display: flex;
   gap: 1rem;
@@ -2820,26 +2844,27 @@ img.jazzicon {
 
 .profile-stat-card {
   flex: 1;
-  background: #050505;
+  background: var(--bg-card-soft);
   border-radius: 16px;
   padding: 1.1rem 0.9rem;
   text-align: center;
-  border: 1px solid #101010;
+  border: 1px solid var(--border-subtle);
 }
 
 .profile-stat-label {
-  color: #888;
+  color: var(--text-secondary);
   font-size: 0.8rem;
   margin-bottom: 0.35rem;
 }
 
 .profile-stat-value {
   font-weight: 700;
-  color: #ffd400;
+  color: var(--accent-yellow);
   font-size: 1.2rem;
 }
 
-/* ===== 소셜 링크 카드 ===== */
+/* 소셜 링크 카드 -------------------------------------------------------- */
+
 .profile-connect-card {
   max-width: 640px;
   margin: 1.25rem auto 0;
@@ -2859,22 +2884,23 @@ img.jazzicon {
 }
 
 .profile-social-row {
-  background: #090909;
+  background: var(--bg-card-soft);
   border-radius: 12px;
   padding: 0.82rem 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border: 1px solid #181818;
-  cursor: pointer;
+  border: 1px solid var(--border-subtle);
   text-decoration: none;
-  color: #fff;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  color: var(--text-primary);
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.06s ease;
 }
 
 .profile-social-row:hover {
-  background: #141414;
+  background: #191919;
   border-color: #2a2a2a;
+  transform: translateY(-1px);
 }
 
 .profile-social-left {
@@ -2883,7 +2909,6 @@ img.jazzicon {
   gap: 0.55rem;
 }
 
-/* ion-icon 공통 스타일 */
 .profile-social-icon,
 .profile-social-open-icon {
   display: inline-flex;
@@ -2901,10 +2926,17 @@ img.jazzicon {
 
 .profile-social-open-icon {
   font-size: 0.95rem;
-  color: #888;
+  color: var(--text-secondary);
 }
 
-/* ===== Recent Posts 카드 ===== */
+/* empty 상태 */
+
+.profile-social-empty {
+  opacity: 0.8;
+}
+
+/* Recent Posts ---------------------------------------------------------- */
+
 .profile-posts-card {
   margin-top: 1.5rem;
 }
@@ -2918,25 +2950,26 @@ img.jazzicon {
 .profile-posts-list {
   display: flex;
   flex-direction: column;
-  gap: 0.95rem;
+  gap: 0.9rem;
 }
 
-.profile-post-row {
-  border-top: 1px solid #111;
-  padding-top: 0.85rem;
+/* 여기서 postCard(.post-card--profile)가 사용됨 */
+/* 별도 스타일을 더 주고 싶으면 오버라이드 */
+
+.profile-posts-list .post-card.post-card--profile {
+  margin: 0;
 }
 
-.profile-post-content {
-  font-size: 0.95rem;
+/* “No posts yet” */
+
+.profile-posts-empty {
+  padding: 1rem 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
 }
 
-.profile-post-meta {
-  margin-top: 0.2rem;
-  font-size: 0.78rem;
-  color: #888;
-}
+/* 모바일 --------------------------------------------------------------- */
 
-/* ===== 모바일 ===== */
 @media (max-width: 600px) {
   .profile-wrapper {
     padding: 1rem;
@@ -2972,24 +3005,28 @@ img.jazzicon {
 }
 :root {
   --bg-page: #000000;
-  --bg-card: #111111;
-  --bg-card-hover: #1a1a1a;
+  --bg-card: #101010;
+  --bg-card-soft: #141414;
+  --bg-card-hover: #171717;
   --border-color: #222222;
+  --border-subtle: #181818;
   --text-primary: #ffffff;
   --text-secondary: #888888;
+  --muted-foreground: #777777;
   --accent-yellow: #f4d03f;
   --accent-green: #2ecc71;
   --accent-blue: #1da1f2;
 }
 
-/* 전체 래퍼 */
+/* 상세 페이지 래퍼 ------------------------------------------------------ */
+
 .post-wrapper {
   background: var(--bg-page);
   color: var(--text-primary);
   min-height: 100vh;
   padding: 1.5rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .post-inner {
@@ -2997,7 +3034,8 @@ img.jazzicon {
   margin: 0 auto;
 }
 
-/* 상단 헤더 (뒤로가기 포함) */
+/* 상단 헤더 */
+
 .post-header {
   display: flex;
   align-items: center;
@@ -3018,6 +3056,10 @@ img.jazzicon {
   cursor: pointer;
 }
 
+.post-back-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .post-back-icon {
   width: 9px;
   height: 9px;
@@ -3034,13 +3076,160 @@ img.jazzicon {
 }
 
 /* 구분선 */
+
 .post-divider {
   height: 1px;
-  background: #181818;
-  margin: 0.75rem 0 0.75rem;
+  background: var(--border-subtle);
+  margin: 0.75rem 0;
 }
 
-/* ---------------- 메인 포스트 ---------------- */
+/* ======================= 공통: 카드(Feed/Profile) ===================== */
+/* shared/ui/post.ts 의 postCard 구조에 맞춘 스타일 */
+
+.post-card {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.9rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease,
+    transform 0.04s ease;
+}
+
+.post-card:last-child {
+  border-bottom: none;
+}
+
+/* Feed에서 사용될 기본 카드 */
+
+.post-card.post-card--feed {
+  background: transparent;
+}
+
+.post-card.post-card--feed:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Profile 화면에서 쓰는 카드 */
+
+.post-card.post-card--profile {
+  background: var(--bg-card);
+  border-radius: 16px;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.post-card.post-card--profile:hover {
+  background: var(--bg-card-hover);
+}
+
+/* compact 옵션 (필요 시 간격만 살짝 줄임) */
+
+.post-card.post-card--compact {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+/* 아바타 / 메인 레이아웃 */
+
+.post-card-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.post-card-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 헤더 (주소/핸들/시간) */
+
+.post-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.post-card-author {
+  font-weight: 600;
+}
+
+.post-card-handle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.post-card-dot {
+  font-size: 0.78rem;
+  color: #555;
+}
+
+.post-card-time {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* 본문 */
+
+.post-card-content {
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+/* 하단 액션 (댓글/리포스트/좋아요/...) */
+
+.post-card-footer {
+  display: flex;
+  gap: 1.7rem;
+  margin-top: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.post-card-action {
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+}
+
+.post-card-action:hover {
+  color: #aaaaaa;
+}
+
+/* 좋아요 on/off */
+
+.post-card-action[data-liked="true"],
+.post-card-action.liked {
+  color: var(--accent-green);
+}
+
+/* 내 글 더보기 */
+
+.post-card-more {
+  margin-left: auto;
+}
+
+/* =================== 상세 페이지용 메인 포스트 ======================== */
 
 .post-main {
   padding: 0.6rem 0 0.75rem;
@@ -3069,6 +3258,7 @@ img.jazzicon {
 }
 
 /* 이름/핸들 */
+
 .post-main-header {
   display: flex;
   flex-direction: column;
@@ -3086,6 +3276,7 @@ img.jazzicon {
 }
 
 /* 본문 텍스트 */
+
 .post-main-content {
   margin-top: 0.6rem;
   font-size: 1.05rem;
@@ -3094,6 +3285,7 @@ img.jazzicon {
 }
 
 /* 시간/메타 정보 */
+
 .post-main-meta {
   margin-top: 0.9rem;
   font-size: 0.8rem;
@@ -3101,12 +3293,13 @@ img.jazzicon {
 }
 
 /* 수치(좋아요/리포스트/답글 등) */
+
 .post-main-stats {
   display: flex;
   gap: 1.5rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #181818;
+  border-top: 1px solid var(--border-subtle);
   font-size: 0.85rem;
 }
 
@@ -3121,12 +3314,13 @@ img.jazzicon {
 }
 
 /* 액션바 */
+
 .post-main-actions {
   display: flex;
   justify-content: space-around;
   margin-top: 0.75rem;
   padding-top: 0.6rem;
-  border-top: 1px solid #181818;
+  border-top: 1px solid var(--border-subtle);
   font-size: 0.9rem;
   color: #777;
 }
@@ -3139,20 +3333,21 @@ img.jazzicon {
 }
 
 .post-main-action:hover {
-  color: #aaa;
+  color: #aaaaaa;
 }
 
-.post-main-like.liked {
+.post-main-like.liked,
+.post-main-action.post-main-like[data-liked="true"] {
   color: var(--accent-green);
 }
 
-/* ---------------- 답글 작성 폼 ---------------- */
+/* ======================= 답글 작성 폼 ================================ */
 
 .post-reply-composer {
   display: flex;
   gap: 0.75rem;
   padding: 0.75rem 0 0.6rem;
-  border-bottom: 1px solid #181818;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .post-reply-avatar {
@@ -3180,12 +3375,12 @@ img.jazzicon {
   min-height: 44px;
   max-height: 140px;
   border-radius: 999px;
-  border: none;
+  border: 1px solid var(--border-color);
   outline: none;
   resize: vertical;
   padding: 0.65rem 0.9rem;
   box-sizing: border-box;
-  background: #111;
+  background: var(--bg-input);
   color: var(--text-primary);
   font-size: 0.9rem;
   font-family: inherit;
@@ -3193,6 +3388,10 @@ img.jazzicon {
 
 .post-reply-input::placeholder {
   color: #555;
+}
+
+.post-reply-input:focus {
+  border-color: var(--accent-blue);
 }
 
 .post-reply-footer {
@@ -3217,7 +3416,7 @@ img.jazzicon {
   cursor: default;
 }
 
-/* ---------------- 답글 리스트 ---------------- */
+/* ======================= 답글 리스트 ================================ */
 
 .post-replies {
   display: flex;
@@ -3231,11 +3430,12 @@ img.jazzicon {
 }
 
 /* 개별 답글 */
+
 .post-reply-item {
   display: flex;
   gap: 0.75rem;
   padding: 0.7rem 0;
-  border-bottom: 1px solid #181818;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .post-reply-avatar-small {
@@ -3286,22 +3486,30 @@ img.jazzicon {
   white-space: pre-wrap;
 }
 
-/* 작은 액션바 (좋아요만) */
-.post-reply-actions {
+.post-reply-like {
   margin-top: 0.3rem;
+  border: none;
+  background: transparent;
+  padding: 0;
   font-size: 0.78rem;
   color: #777;
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.2rem;
   cursor: pointer;
 }
 
-.post-reply-actions.liked {
+.post-reply-like:hover {
+  color: #aaaaaa;
+}
+
+.post-reply-like[data-liked="true"],
+.post-reply-like.liked {
   color: var(--accent-green);
 }
 
-/* 반응형 */
+/* 반응형 --------------------------------------------------------------- */
+
 @media (max-width: 768px) {
   .post-wrapper {
     padding: 1.25rem 1rem;
@@ -3309,6 +3517,11 @@ img.jazzicon {
 
   .post-inner {
     max-width: 100%;
+  }
+
+  .post-card {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
   }
 }
 :root {
@@ -4856,24 +5069,28 @@ ion-modal.chat-room-modal {
 }
 :root {
   --bg-page: #000000;
-  --bg-card: #111111;
-  --bg-card-hover: #1a1a1a;
+  --bg-card: #101010;
+  --bg-card-soft: #141414;
+  --bg-input: #111111;
   --border-color: #222222;
+  --border-subtle: #181818;
   --text-primary: #ffffff;
   --text-secondary: #888888;
+  --muted-foreground: #777777;
   --accent-yellow: #f4d03f;
   --accent-green: #2ecc71;
   --accent-blue: #1da1f2;
 }
 
-/* 전체 레이아웃 */
+/* 전체 레이아웃 ---------------------------------------------------------- */
+
 .feed-wrapper {
   background: var(--bg-page);
   color: var(--text-primary);
   min-height: 100vh;
   padding: 2rem 1.5rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .feed-inner {
@@ -4881,36 +5098,38 @@ ion-modal.chat-room-modal {
   margin: 0 auto;
 }
 
-/* 헤더 */
+/* 헤더 ------------------------------------------------------------------ */
+
 .feed-header {
-  padding-bottom: 1rem;
+  padding-bottom: 0.9rem;
 }
 
 .feed-header-title {
+  margin: 0;
   font-size: 1.8rem;
   font-weight: 800;
-  margin: 0;
 }
 
 .feed-header-sub {
   margin: 0.25rem 0 0;
-  color: var(--text-secondary);
   font-size: 0.9rem;
+  color: var(--text-secondary);
 }
 
 /* 구분선 */
+
 .feed-divider {
   height: 1px;
-  background: #181818;
+  background: var(--border-subtle);
   margin: 1rem 0;
 }
 
-/* ---------------- 작성 폼 (Composer) ---------------- */
+/* 작성 폼 (Composer) ---------------------------------------------------- */
 
 .feed-composer {
   display: flex;
   gap: 0.75rem;
-  padding: 1rem 0 0.5rem;
+  padding: 1rem 0 0.6rem;
 }
 
 .feed-composer-avatar {
@@ -4933,19 +5152,18 @@ ion-modal.chat-room-modal {
   flex-direction: column;
 }
 
-/* 텍스트 입력 */
 .feed-composer-input {
   width: 100%;
   min-height: 56px;
   max-height: 180px;
-  border-radius: 12px;
-  border: none;
-  outline: none;
   resize: vertical;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-primary);
   padding: 0.75rem 0.9rem;
   box-sizing: border-box;
-  background: #111;
-  color: var(--text-primary);
+  outline: none;
   font-size: 0.95rem;
   font-family: inherit;
 }
@@ -4954,7 +5172,12 @@ ion-modal.chat-room-modal {
   color: #555;
 }
 
-/* 하단 액션 바 */
+.feed-composer-input:focus {
+  border-color: var(--accent-blue);
+}
+
+/* 하단 메타 / 버튼 */
+
 .feed-composer-footer {
   display: flex;
   align-items: center;
@@ -4965,7 +5188,7 @@ ion-modal.chat-room-modal {
 .feed-composer-meta {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   font-size: 0.78rem;
   color: #777;
 }
@@ -4979,6 +5202,7 @@ ion-modal.chat-room-modal {
 }
 
 /* Post 버튼 */
+
 .feed-composer-btn {
   border: none;
   border-radius: 999px;
@@ -4988,7 +5212,7 @@ ion-modal.chat-room-modal {
   cursor: pointer;
   background: var(--accent-blue);
   color: #fff;
-  transition: background 0.15s ease, transform 0.05s ease;
+  transition: background 0.12s ease, transform 0.06s ease;
 }
 
 .feed-composer-btn:disabled {
@@ -4997,125 +5221,47 @@ ion-modal.chat-room-modal {
   transform: none;
 }
 
+.feed-composer-btn:not(:disabled):hover {
+  background: #1b91e0;
+}
+
 .feed-composer-btn:not(:disabled):active {
   transform: translateY(1px);
 }
 
-/* ---------------- 피드 리스트 ---------------- */
+/* 상태 / 에러 ----------------------------------------------------------- */
+
+.feed-status {
+  font-size: 0.85rem;
+  padding: 0.75rem 0;
+}
+
+.feed-status-loading {
+  color: var(--text-secondary);
+}
+
+.feed-status-error {
+  color: #ff4d4f;
+}
+
+/* 피드 리스트 ----------------------------------------------------------- */
 
 .feed-list {
-  margin-top: 0.5rem;
   display: flex;
   flex-direction: column;
 }
 
-/* 개별 포스트 */
-.feed-item {
-  display: flex;
-  gap: 0.75rem;
-  padding: 0.9rem 0;
-  border-bottom: 1px solid #181818;
-  cursor: pointer;
-  transition: background 0.12s ease;
+/* “아직 포스트 없음” */
+
+.feed-empty {
+  padding: 1.5rem 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
 }
 
-.feed-item:hover {
-  background: rgba(255, 255, 255, 0.02);
-}
+/* 반응형 ---------------------------------------------------------------- */
 
-.feed-item-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  background: #f5f5f5;
-  color: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-
-.feed-item-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.feed-item-header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-}
-
-.feed-item-author {
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-.feed-item-handle {
-  font-size: 0.8rem;
-  color: #777;
-}
-
-.feed-item-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 999px;
-  background: #555;
-}
-
-.feed-item-time {
-  font-size: 0.78rem;
-  color: #777;
-}
-
-.feed-item-body {
-  margin-top: 0.35rem;
-  font-size: 0.95rem;
-  line-height: 1.45;
-  white-space: pre-wrap;
-}
-
-/* 액션 바 (댓글/리포스트/좋아요) */
-.feed-item-actions {
-  display: flex;
-  gap: 2rem;
-  margin-top: 0.6rem;
-  font-size: 0.8rem;
-  color: #777;
-}
-
-.feed-item-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  cursor: pointer;
-  user-select: none;
-}
-
-.feed-item-action:hover {
-  color: #aaa;
-}
-
-.feed-item-like.liked {
-  color: var(--accent-green);
-}
-
-/* 작은 원 아이콘 느낌 */
-.feed-item-action-icon {
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.65rem;
-}
-
-/* 반응형 */
 @media (max-width: 768px) {
   .feed-wrapper {
     padding: 1.5rem 1rem;
@@ -5124,12 +5270,7 @@ ion-modal.chat-room-modal {
   .feed-inner {
     max-width: 100%;
   }
-
-  .feed-item-actions {
-    gap: 1.5rem;
-  }
 }
-
 :root {
   --bg-page: #000000;
   --bg-card: #111111;
