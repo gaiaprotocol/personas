@@ -1,4 +1,5 @@
 import { h } from '@webtaku/h';
+import { PersonaFragments } from '../../shared/types/persona-fragments';
 import { PersonaPost } from '../../shared/types/post';
 import { Profile } from '../../shared/types/profile';
 import { profile } from '../../shared/ui/profile';
@@ -9,15 +10,20 @@ import { scripts } from './scripts';
 import { homeTab } from './tabs/home';
 import { topBar } from './top-bar';
 
-function website(search: string, data?: {
-  type: 'post',
-  post: PersonaPost,
-  replies: PersonaPost[],
-} | {
-  type: 'profile',
-  profile: Profile,
-  posts: PersonaPost[],
-}) {
+type WebsiteData =
+  | {
+    type: 'post';
+    post: PersonaPost;
+    replies: PersonaPost[];
+  }
+  | {
+    type: 'profile';
+    profile: Profile;
+    posts: PersonaPost[];
+    personaFragments: PersonaFragments | null;
+  };
+
+function website(search: string, data?: WebsiteData) {
   return (
     '<!DOCTYPE html>' +
     h(
@@ -65,18 +71,35 @@ function website(search: string, data?: {
               h('ion-content.main-content#notifications-tab-content'),
             ),
 
+            // Post 탭 (SSR 시 단일 포스트 뷰)
             h(
               'ion-tab',
               { tab: 'post' },
               topBar,
-              h('ion-content.main-content#post-tab-content', data?.type === 'post' ? postPage(h, data.post, data.replies) : undefined),
+              h(
+                'ion-content.main-content#post-tab-content',
+                data?.type === 'post'
+                  ? postPage(h, data.post, data.replies)
+                  : undefined,
+              ),
             ),
 
+            // Profile 탭 (SSR 시 프로필 뷰)
             h(
               'ion-tab',
               { tab: 'profile' },
               topBar,
-              h('ion-content.main-content#profile-tab-content', data?.type === 'profile' ? profile(h, data.profile, data.posts) : undefined),
+              h(
+                'ion-content.main-content#profile-tab-content',
+                data?.type === 'profile'
+                  ? profile(
+                    h,
+                    data.profile,
+                    data.posts,
+                    data.personaFragments ?? null,
+                  )
+                  : undefined,
+              ),
             ),
 
             bottomBar,
@@ -90,7 +113,7 @@ function website(search: string, data?: {
             ${data?.type === 'post' ? `tabs.select('post');` : ''}
             ${data?.type === 'profile' ? `tabs.select('profile');` : ''}
           }
-        </script>`
+        </script>`,
       ),
     )
   );

@@ -1,6 +1,7 @@
 import { el } from '@webtaku/el';
 import { PersonaPost } from '../../shared/types/post';
 import { Profile } from '../../shared/types/profile';
+import { PersonaFragments } from '../../shared/types/persona-fragments';
 import { profile as profileTemplate } from '../../shared/ui/profile';
 
 export class ProfileTab {
@@ -10,9 +11,10 @@ export class ProfileTab {
   constructor(
     profile: Profile,
     posts: PersonaPost[],
+    personaFragments: PersonaFragments | null,
     navigate?: (path: string) => void,
   ) {
-    this.el = profileTemplate(el, profile, posts) as HTMLElement;
+    this.el = profileTemplate(el, profile, posts, personaFragments) as HTMLElement;
     this.navigate = navigate;
     this.setupInternalLinks();
   }

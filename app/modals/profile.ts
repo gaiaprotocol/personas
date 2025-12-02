@@ -4,7 +4,7 @@ import './profile.css';
 
 import type { PersonaPost } from '../../shared/types/post';
 import type { Profile } from '../../shared/types/profile';
-import { fetchProfileWithPosts } from '../api/profile';
+import { fetchPersonaProfile } from '../api/profile';
 
 import { tokenManager } from '@gaiaprotocol/client-common';
 import { getAddress } from 'viem';
@@ -195,7 +195,7 @@ export function createUserProfileModal(
    * ------------------------*/
   (async () => {
     try {
-      const { profile, posts } = await fetchProfileWithPosts(profileId);
+      const { profile, posts, personaFragments } = await fetchPersonaProfile(profileId);
       const data = toUserProfileData(profile, posts);
 
       // 기존 로딩 제거
@@ -206,6 +206,7 @@ export function createUserProfileModal(
         el,
         profile,
         posts,
+        personaFragments,
       ) as HTMLElement;
 
       profileRoot.classList.add('user-profile-modal-body');

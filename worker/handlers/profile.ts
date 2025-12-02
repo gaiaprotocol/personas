@@ -11,7 +11,8 @@ export async function renderProfilePage(
     return new Response("Invalid Wallet Address", { status: 400 });
   }
 
-  const { profile, posts } = await (env.API_WORKER as any).getProfileWithPosts(wallet);
+  const { profile, posts, personaFragments } =
+    await (env.API_WORKER as any).getPersonaProfile(wallet);
 
   // profile() 컴포넌트가 null 허용 안하면 여기서 기본값 만들어서 넘겨도 됨
   url.searchParams.set("profileWallet", wallet);
@@ -30,6 +31,7 @@ export async function renderProfilePage(
         updatedAt: null,
       },
       posts,
+      personaFragments: personaFragments ?? null,
     }),
     { headers: { "Content-Type": "text/html" } },
   );

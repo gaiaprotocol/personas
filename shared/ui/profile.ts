@@ -1,6 +1,7 @@
 import { AnyBuilder } from '@webtaku/any-builder';
 import { PersonaPost } from '../types/post';
 import { Profile } from '../types/profile';
+import { PersonaFragments } from '../types/persona-fragments';
 import { postCard } from '../ui/post';
 import {
   avatarInitialFromName,
@@ -17,6 +18,7 @@ export function profile(
   b: AnyBuilder,
   profile: Profile,
   posts: PersonaPost[],
+  personaFragments: PersonaFragments | null,
 ) {
   const displayName =
     profile.nickname && profile.nickname.trim().length > 0
@@ -32,19 +34,24 @@ export function profile(
   const shortAddress = shortenAddress(profile.account, 6);
   const avatarInitial = avatarInitialFromName(displayName);
 
-  const createdDate = new Date((profile.createdAt ?? 0) * 1000);
-  const memberSince = createdDate.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-  });
-
-  const totalPosts = posts.length;
-  const totalLikes = posts.reduce(
-    (acc, p) => acc + (p.likeCount ?? 0),
-    0,
-  );
-
   const socialLinks = profile.socialLinks ?? {};
+
+  // ===== personaFragments 기반 숫자들 =====
+  // lastPrice / holderCount / currentSupply 는 백엔드에서 포맷된 string/number 로 내려준다고 가정
+  const fragmentPriceText =
+    personaFragments?.lastPrice && personaFragments.lastPrice.trim().length > 0
+      ? personaFragments.lastPrice
+      : '–';
+
+  const holderCountText =
+    typeof personaFragments?.holderCount === 'number'
+      ? personaFragments.holderCount.toLocaleString()
+      : '–';
+
+  const currentSupplyText =
+    personaFragments?.currentSupply && personaFragments.currentSupply.trim().length > 0
+      ? personaFragments.currentSupply
+      : '–';
 
   // ===== Hero / 메인 프로필 카드 =====
   const editButton = b(
@@ -78,23 +85,41 @@ export function profile(
     mainProfileCard,
   );
 
-  // ===== Stats =====
+  // ===== Stats: 프래그먼트 가격 / 홀더 수 / 공급량 =====
   const statsRow = b(
     'div.profile-stats-row',
     b(
       'div.profile-stat-card',
-      b('div.profile-stat-label', 'Posts'),
-      b('div.profile-stat-value', totalPosts.toLocaleString()),
+      b('div.profile-stat-label', 'Fragment Price'),
+      b(
+        'div.profile-stat-value',
+        {
+          'data-role': 'fragment-price',
+        } as any,
+        fragmentPriceText,
+      ),
     ),
     b(
       'div.profile-stat-card',
-      b('div.profile-stat-label', 'Total Likes'),
-      b('div.profile-stat-value', totalLikes.toLocaleString()),
+      b('div.profile-stat-label', 'Holders'),
+      b(
+        'div.profile-stat-value',
+        {
+          'data-role': 'holder-count',
+        } as any,
+        holderCountText,
+      ),
     ),
     b(
       'div.profile-stat-card',
-      b('div.profile-stat-label', 'Member Since'),
-      b('div.profile-stat-value', memberSince),
+      b('div.profile-stat-label', 'Supply'),
+      b(
+        'div.profile-stat-value',
+        {
+          'data-role': 'fragment-supply',
+        } as any,
+        currentSupplyText,
+      ),
     ),
   );
 
@@ -155,7 +180,7 @@ export function profile(
     b('div.profile-social-list', ...socialLinkNodes),
   );
 
-  // ===== Recent Posts 카드 – postCard 재사용 =====
+  // ===== Recent Posts 카드 – UI 는 그대로 유지 =====
   const postsCardBody =
     posts.length > 0
       ? b(

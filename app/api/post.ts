@@ -181,42 +181,6 @@ export type ProfileWithPostsResult = {
   posts: PersonaPost[];
 };
 
-/**
- * 특정 지갑 주소의 프로필 + 포스트 목록 조회
- * 서버 엔드포인트: GET /profile-with-posts?address=<EVM 주소>
- */
-export async function fetchProfileWithPosts(
-  account: string,
-): Promise<ProfileWithPostsResult> {
-  if (!account) throw new Error('Missing account address.');
-
-  const checksummedAccount = getAddress(account);
-
-  const url = `${GAIA_API_BASE_URI}/profile-with-posts?address=${encodeURIComponent(
-    checksummedAccount,
-  )}`;
-
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-
-  if (!res.ok) {
-    let message = `Failed to fetch profile with posts: ${res.status}`;
-    try {
-      const data = await res.json();
-      if (data?.error) message = data.error;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(message);
-  }
-
-  return (await res.json()) as ProfileWithPostsResult;
-}
-
 /* ------------------------------------------------------------------ */
 /* Persona Post API (새로운 서버 엔드포인트 기준)                       */
 /* ------------------------------------------------------------------ */

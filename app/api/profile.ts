@@ -1,4 +1,5 @@
 import { getAddress } from 'viem';
+import { PersonaFragments } from '../../shared/types/persona-fragments';
 import { PersonaPost } from '../../shared/types/post';
 import { Profile, SocialLinks } from '../../shared/types/profile';
 
@@ -163,23 +164,24 @@ export async function fetchProfileByAccount(account: string): Promise<Profile> {
   return (await res.json()) as Profile;
 }
 
-export type ProfileWithPostsResult = {
+export type PersonaProfileResult = {
   profile: Profile;
   posts: PersonaPost[];
+  personaFragments: PersonaFragments | null;
 };
 
 /**
  * 특정 지갑 주소의 프로필 + 포스트 목록 조회
- * 서버 엔드포인트: GET /profile-with-posts?address=<EVM 주소>
+ * 서버 엔드포인트: GET /persona-profile?address=<EVM 주소>
  */
-export async function fetchProfileWithPosts(
+export async function fetchPersonaProfile(
   account: string,
-): Promise<ProfileWithPostsResult> {
+): Promise<PersonaProfileResult> {
   if (!account) throw new Error('Missing account address.');
 
   const checksummedAccount = getAddress(account);
 
-  const url = `${GAIA_API_BASE_URI}/profile-with-posts?address=${encodeURIComponent(
+  const url = `${GAIA_API_BASE_URI}/persona-profile?address=${encodeURIComponent(
     checksummedAccount,
   )}`;
 
@@ -201,5 +203,5 @@ export async function fetchProfileWithPosts(
     throw new Error(message);
   }
 
-  return (await res.json()) as ProfileWithPostsResult;
+  return (await res.json()) as PersonaProfileResult;
 }

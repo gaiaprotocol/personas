@@ -33,7 +33,7 @@ import { sessionManager } from './auth/session-manager';
 
 // 🔹 프로필 타입/매니저
 import type { Profile } from '../shared/types/profile';
-import { fetchProfileWithPosts } from './api/profile';
+import { fetchPersonaProfile } from './api/profile';
 import { profileManager } from './services/profile-manager';
 
 // 🔹 포스트 API
@@ -380,12 +380,13 @@ function setupRoutes() {
 
     const loadProfileView = async () => {
       try {
-        const { profile, posts } = await fetchProfileWithPosts(id);
+        const { profile, posts, personaFragments } = await fetchPersonaProfile(id);
 
         profileContent.innerHTML = '';
         const profileTab = new ProfileTab(
           profile,
           posts,
+          personaFragments ?? null,
           router.navigate.bind(router),
         );
         profileContent.appendChild(profileTab.el);
@@ -478,13 +479,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
           (async () => {
             try {
-              const { profile, posts } = await fetchProfileWithPosts(
-                normalizedMy,
-              );
+              const { profile, posts, personaFragments } =
+                await fetchPersonaProfile(normalizedMy);
+
               profileContent.innerHTML = '';
               const profileTab = new ProfileTab(
                 profile,
                 posts,
+                personaFragments ?? null,
                 router.navigate.bind(router),
               );
               profileContent.appendChild(profileTab.el);
