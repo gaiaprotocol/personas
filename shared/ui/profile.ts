@@ -46,12 +46,12 @@ export function profile(
   const holderCountText =
     typeof personaFragments?.holderCount === 'number'
       ? personaFragments.holderCount.toLocaleString()
-      : '–';
+      : '0';
 
   const currentSupplyText =
     personaFragments?.currentSupply && personaFragments.currentSupply.trim().length > 0
       ? personaFragments.currentSupply
-      : '–';
+      : '0';
 
   // ===== Hero / 메인 프로필 카드 =====
   const editButton = b(
