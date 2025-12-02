@@ -37,7 +37,6 @@ export function profile(
   const socialLinks = profile.socialLinks ?? {};
 
   // ===== personaFragments 기반 숫자들 =====
-  // lastPrice / holderCount / currentSupply 는 백엔드에서 포맷된 string/number 로 내려준다고 가정
   const fragmentPriceText =
     personaFragments?.lastPrice && personaFragments.lastPrice.trim().length > 0
       ? personaFragments.lastPrice
@@ -46,12 +45,12 @@ export function profile(
   const holderCountText =
     typeof personaFragments?.holderCount === 'number'
       ? personaFragments.holderCount.toLocaleString()
-      : '0';
+      : '–';
 
   const currentSupplyText =
     personaFragments?.currentSupply && personaFragments.currentSupply.trim().length > 0
       ? personaFragments.currentSupply
-      : '0';
+      : '–';
 
   // ===== Hero / 메인 프로필 카드 =====
   const editButton = b(
@@ -83,44 +82,6 @@ export function profile(
     b('div.profile-cover'),
     editButton,
     mainProfileCard,
-  );
-
-  // ===== Stats: 프래그먼트 가격 / 홀더 수 / 공급량 =====
-  const statsRow = b(
-    'div.profile-stats-row',
-    b(
-      'div.profile-stat-card',
-      b('div.profile-stat-label', 'Fragment Price'),
-      b(
-        'div.profile-stat-value',
-        {
-          'data-role': 'fragment-price',
-        } as any,
-        fragmentPriceText,
-      ),
-    ),
-    b(
-      'div.profile-stat-card',
-      b('div.profile-stat-label', 'Holders'),
-      b(
-        'div.profile-stat-value',
-        {
-          'data-role': 'holder-count',
-        } as any,
-        holderCountText,
-      ),
-    ),
-    b(
-      'div.profile-stat-card',
-      b('div.profile-stat-label', 'Supply'),
-      b(
-        'div.profile-stat-value',
-        {
-          'data-role': 'fragment-supply',
-        } as any,
-        currentSupplyText,
-      ),
-    ),
   );
 
   // ===== Connect With Me (소셜 링크 카드) =====
@@ -180,7 +141,45 @@ export function profile(
     b('div.profile-social-list', ...socialLinkNodes),
   );
 
-  // ===== Recent Posts 카드 – UI 는 그대로 유지 =====
+  // ===== Stats: 프래그먼트 가격 / 홀더 수 / 공급량 =====
+  const statsRow = b(
+    'div.profile-stats-row',
+    b(
+      'div.profile-stat-card',
+      b('div.profile-stat-label', 'Fragment Price'),
+      b(
+        'div.profile-stat-value',
+        {
+          'data-role': 'fragment-price',
+        } as any,
+        fragmentPriceText,
+      ),
+    ),
+    b(
+      'div.profile-stat-card',
+      b('div.profile-stat-label', 'Holders'),
+      b(
+        'div.profile-stat-value',
+        {
+          'data-role': 'holder-count',
+        } as any,
+        holderCountText,
+      ),
+    ),
+    b(
+      'div.profile-stat-card',
+      b('div.profile-stat-label', 'Supply'),
+      b(
+        'div.profile-stat-value',
+        {
+          'data-role': 'fragment-supply',
+        } as any,
+        currentSupplyText,
+      ),
+    ),
+  );
+
+  // ===== Recent Posts 카드 =====
   const postsCardBody =
     posts.length > 0
       ? b(
@@ -190,7 +189,7 @@ export function profile(
             post,
             isMine: false,
             compact: true,
-            variant: 'profile', // CSS에서 .post-card--profile 등으로 스타일 분리
+            variant: 'profile',
           } as any),
         ),
       )
@@ -203,6 +202,7 @@ export function profile(
   );
 
   // ===== 전체 조립 =====
+  // 순서: 소셜 링크 → Stats → (TradePanel 이 여기 사이에 끼어들 예정) → Posts
   const root = b(
     'section.profile-wrapper',
     b(
@@ -210,8 +210,8 @@ export function profile(
       heroSection,
       b(
         'div.profile-content-offset',
-        statsRow,
         connectCard,
+        statsRow,
         postsCard,
       ),
     ),

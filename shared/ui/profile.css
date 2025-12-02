@@ -93,7 +93,7 @@
 /* 메인 카드 높이만큼 아래쪽 여백 */
 
 .profile-content-offset {
-  margin-top: 64px;
+  margin-top: 20px;
 }
 
 /* 기본 정보 ------------------------------------------------------------- */
@@ -261,7 +261,6 @@
 }
 
 /* 여기서 postCard(.post-card--profile)가 사용됨 */
-/* 별도 스타일을 더 주고 싶으면 오버라이드 */
 
 .profile-posts-list .post-card.post-card--profile {
   margin: 0;
@@ -299,6 +298,10 @@
   .profile-main {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .profile-content-offset {
+    margin-top: 128px;
   }
 
   .profile-stats-row {

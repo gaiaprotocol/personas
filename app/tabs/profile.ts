@@ -1,15 +1,13 @@
 import { el } from '@webtaku/el';
 import { formatEther } from 'viem';
 
+import { tokenManager } from '@gaiaprotocol/client-common';
 import { PersonaFragments } from '../../shared/types/persona-fragments';
 import { PersonaPost } from '../../shared/types/post';
 import { Profile } from '../../shared/types/profile';
 import { profile as profileTemplate } from '../../shared/ui/profile';
-import {
-  Address,
-  getBuyPrice,
-  getPersonaSupply,
-} from '../contracts/persona-fragments';
+import { TradePanel } from '../components/trade-panel';
+import { Address } from '../contracts/persona-fragments';
 
 export class ProfileTab {
   el: HTMLElement;
@@ -32,7 +30,10 @@ export class ProfileTab {
     this.navigate = navigate;
     this.setupInternalLinks();
 
-    // 클라이언트에서 온체인 가격/공급량 갱신
+    // 거래 패널 mount (소셜 링크 → Stats → Trade → Posts 순서가 되도록)
+    this.mountTradePanel(profile);
+
+    // 온체인 가격/공급량 갱신 (SSR 값 덮어쓰기)
     this.loadOnchainStats(profile).catch((err) => {
       console.error('[ProfileTab] failed to load on-chain stats', err);
     });
@@ -42,7 +43,6 @@ export class ProfileTab {
   private setupInternalLinks() {
     if (!this.navigate) return;
 
-    // 프로필 뷰 안의 내부 링크들 (Recent Posts 등)
     const links = this.el.querySelectorAll<HTMLAnchorElement>('a[href^="/"]');
 
     links.forEach((link) => {
@@ -57,10 +57,48 @@ export class ProfileTab {
   }
 
   /**
-   * 클라이언트에서 스마트 컨트랙트 호출:
-   * - getBuyPrice(persona, 1n) → Fragment Price
-   * - getPersonaSupply(persona) → Supply
-   * 두 값을 프로필 카드의 data-role 영역에 주입
+   * 프로필 내용 안에 거래 패널을 mount
+   * - connectCard(소셜) 다음, statsRow 다음에 삽입
+   */
+  private mountTradePanel(profile: Profile) {
+    const contentOffset = this.el.querySelector<HTMLElement>(
+      '.profile-content-offset',
+    );
+    if (!contentOffset) return;
+
+    const statsRow = contentOffset.querySelector<HTMLElement>(
+      '.profile-stats-row',
+    );
+    if (!statsRow) return;
+
+    const tradeContainer = document.createElement('section');
+    tradeContainer.setAttribute('data-role', 'trade-panel-root');
+
+    // 순서: connectCard → statsRow → tradeContainer → postsCard
+    statsRow.insertAdjacentElement('afterend', tradeContainer);
+
+    const personaAddress = profile.account as Address;
+
+    // tokenManager 에서 현재 지갑 주소를 trader 로 사용
+    const getTraderAddress = () => {
+      const addr = tokenManager.getAddress?.();
+      return addr && addr.startsWith('0x') ? (addr as Address) : null;
+    };
+
+    new TradePanel(tradeContainer, {
+      personaAddress,
+      getTraderAddress,
+      onTraded: () => {
+        console.log('[ProfileTab] trade completed for', personaAddress);
+      },
+    });
+  }
+
+  /**
+   * 클라이언트에서 스마트 컨트랙트 호출해서
+   * - Fragment Price (1개 기준)
+   * - Supply
+   * 를 프로필 상단 Stats 영역에 주입
    */
   private async loadOnchainStats(profile: Profile) {
     try {
@@ -69,12 +107,15 @@ export class ProfileTab {
       // EVM 주소 형태가 아니면 스킵
       if (!account || !account.startsWith('0x')) return;
 
+      const { getBuyPrice, getPersonaSupply } = await import(
+        '../contracts/persona-fragments'
+      );
+
       const personaAddress = account as Address;
 
-      // 가격 / 공급량을 동시에 가져오기
       const [priceWei, supply] = await Promise.all([
-        getBuyPrice(personaAddress, 1n),     // 1 fragment 기준 가격 (wei)
-        getPersonaSupply(personaAddress),    // 총 공급량 (bigint)
+        getBuyPrice(personaAddress, 1n), // 1 fragment 기준 가격 (wei)
+        getPersonaSupply(personaAddress), // 총 공급량 (bigint)
       ]);
 
       // ===== Fragment Price 채우기 =====
@@ -83,7 +124,6 @@ export class ProfileTab {
         '[data-role="fragment-price"]',
       );
       if (priceElement) {
-        // 예: "0.1234 ETH"
         priceElement.textContent = `${priceEth} ETH`;
       }
 
@@ -92,7 +132,6 @@ export class ProfileTab {
         '[data-role="fragment-supply"]',
       );
       if (supplyElement) {
-        // bigint → 문자열 (toLocaleString 사용하면 1,234 처럼 쉼표포맷)
         const supplyText =
           typeof (supply as any).toLocaleString === 'function'
             ? (supply as any).toLocaleString()
