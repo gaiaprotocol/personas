@@ -16,7 +16,7 @@ export type HoldingRewardResponse = {
  * 특정 지갑 주소(trader)가 특정 persona 에 대해
  * amount 만큼 buy/sell 할 때 사용할 holding reward 서명 데이터 요청
  *
- * 서버 엔드포인트 예시: GET /holding-reward
+ * 서버 엔드포인트 예시: GET /persona/holding-reward
  *   ?persona=<address>
  *   &trader=<address>
  *   &amount=<bigint>
@@ -33,7 +33,7 @@ export async function fetchHoldingReward(params: {
   const { persona, trader, amount, side } = params;
 
   const url = new URL(
-    `${GAIA_API_BASE_URI}/holding-reward`,
+    `${GAIA_API_BASE_URI}/persona/holding-reward`,
   );
 
   url.searchParams.set('persona', persona);
