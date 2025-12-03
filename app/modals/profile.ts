@@ -323,21 +323,31 @@ export function createUserProfileModal(
   /* -------------------------
    *     Header
    * ------------------------*/
-  const closeBtn = el(
+
+  const backIcon = el('ion-icon', {
+    name: 'chevron-back-outline',
+    slot: 'icon-only',
+  });
+
+  const backInnerButton = el(
     'ion-button',
-    {
-      slot: 'start',
-      fill: 'clear',
-      onclick: () => modal.dismiss(),
-    },
-    el('ion-icon', { name: 'chevron-back-outline' }),
+    { fill: 'clear' },
+    backIcon,
+  ) as HTMLElement;
+
+  backInnerButton.addEventListener('click', () => modal.dismiss());
+
+  const backBtn = el(
+    'ion-buttons',
+    { slot: 'start' },
+    backInnerButton,
   );
 
   const titleEl = el('ion-title', 'Profile');
 
   const header = el(
     'ion-header',
-    el('ion-toolbar', closeBtn, titleEl),
+    el('ion-toolbar', backBtn, titleEl),
   );
 
   /* -------------------------
