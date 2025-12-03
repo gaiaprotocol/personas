@@ -4662,6 +4662,113 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   --background: #000;
   --color: #fff;
 }
+/*!**************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[1]!./app/components/trade-panel.css ***!
+  \**************************************************************************************************************/
+.profile-trade-card {
+  margin-top: 1.5rem;
+}
+
+.trade-mode-row {
+  display: inline-flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.trade-mode-btn {
+  flex: 1;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card-soft);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.trade-mode-btn--active {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 0 1px rgba(46, 204, 113, 0.3);
+}
+
+.trade-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.trade-input-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.trade-input-amount {
+  background: #050505;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  padding: 0.55rem 0.7rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.trade-summary-box {
+  background: var(--bg-card-soft);
+  border-radius: 12px;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 0.75rem;
+}
+
+.trade-summary-list {
+  margin: 0;
+  padding: 0;
+}
+
+.trade-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+}
+
+.trade-summary-row--emphasis {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--border-subtle);
+  font-weight: 600;
+}
+
+.trade-summary-row dt {
+  opacity: 0.8;
+}
+
+.trade-summary-row dd {
+  margin: 0;
+}
+
+.trade-error {
+  color: #ff6b6b;
+  font-size: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.trade-submit-btn {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent-green);
+  color: #000;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.trade-submit-btn--loading {
+  opacity: 0.7;
+  cursor: default;
+}
 /*!*************************************************************************************************!*\
   !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[1]!./app/tabs/chat.css ***!
   \*************************************************************************************************/
@@ -5710,111 +5817,4 @@ ion-modal.chat-room-modal {
     flex-direction: column;
     align-items: flex-start;
   }
-}
-/*!**************************************************************************************************************!*\
-  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[1]!./app/components/trade-panel.css ***!
-  \**************************************************************************************************************/
-.profile-trade-card {
-  margin-top: 1.5rem;
-}
-
-.trade-mode-row {
-  display: inline-flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.trade-mode-btn {
-  flex: 1;
-  padding: 0.4rem 0.8rem;
-  border-radius: 999px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-card-soft);
-  color: var(--text-primary);
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.trade-mode-btn--active {
-  border-color: var(--accent-green);
-  box-shadow: 0 0 0 1px rgba(46, 204, 113, 0.3);
-}
-
-.trade-input-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
-}
-
-.trade-input-label {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-
-.trade-input-amount {
-  background: #050505;
-  border-radius: 10px;
-  border: 1px solid var(--border-subtle);
-  padding: 0.55rem 0.7rem;
-  color: var(--text-primary);
-  font-size: 0.9rem;
-}
-
-.trade-summary-box {
-  background: var(--bg-card-soft);
-  border-radius: 12px;
-  padding: 0.8rem 0.9rem;
-  border: 1px solid var(--border-subtle);
-  margin-bottom: 0.75rem;
-}
-
-.trade-summary-list {
-  margin: 0;
-  padding: 0;
-}
-
-.trade-summary-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.8rem;
-  margin-bottom: 0.2rem;
-}
-
-.trade-summary-row--emphasis {
-  margin-top: 0.4rem;
-  padding-top: 0.4rem;
-  border-top: 1px dashed var(--border-subtle);
-  font-weight: 600;
-}
-
-.trade-summary-row dt {
-  opacity: 0.8;
-}
-
-.trade-summary-row dd {
-  margin: 0;
-}
-
-.trade-error {
-  color: #ff6b6b;
-  font-size: 0.8rem;
-  margin-bottom: 0.6rem;
-}
-
-.trade-submit-btn {
-  width: 100%;
-  padding: 0.6rem 1rem;
-  border-radius: 999px;
-  border: none;
-  background: var(--accent-green);
-  color: #000;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.trade-submit-btn--loading {
-  opacity: 0.7;
-  cursor: default;
 }

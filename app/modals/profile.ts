@@ -7,11 +7,13 @@ import type { Profile } from '../../shared/types/profile';
 import { fetchPersonaProfile } from '../api/profile';
 
 import { tokenManager } from '@gaiaprotocol/client-common';
-import { getAddress } from 'viem';
+import { formatEther, getAddress } from 'viem';
+import { TradePanel } from '../components/trade-panel';
+import { Address } from '../contracts/persona-fragments';
 import { profileManager } from '../services/profile-manager';
 
 /* =========================
- *   헬퍼
+ *   헬퍼들
  * =======================*/
 
 function shortenAddress(addr: string, head = 6, tail = 4) {
@@ -23,7 +25,7 @@ function shortenAddress(addr: string, head = 6, tail = 4) {
 function toUserProfileData(profile: Profile, posts: PersonaPost[]) {
   const name =
     profile.nickname?.trim().length
-      ? profile.nickname
+      ? profile.nickname.trim()
       : shortenAddress(profile.account);
 
   const avatarInitial =
@@ -73,35 +75,27 @@ function toUserProfileData(profile: Profile, posts: PersonaPost[]) {
   };
 }
 
-/** DOM 반영 */
+/** DOM 반영 (텍스트/아바타만 업데이트, 포스트 DOM은 건드리지 않음) */
 function applyProfileData(
   root: HTMLElement,
   data: ReturnType<typeof toUserProfileData>,
 ) {
-  // 이름 / 바이오 / 주소
-  root.querySelector<HTMLElement>('.profile-name')!.textContent = data.name;
-  root.querySelector<HTMLElement>('.profile-bio')!.textContent = data.bio;
-  root.querySelector<HTMLElement>('.profile-address')!.textContent =
-    data.address;
+  const nameEl = root.querySelector<HTMLElement>('.profile-name');
+  if (nameEl) nameEl.textContent = data.name;
 
-  const avatar = root.querySelector<HTMLElement>('.profile-avatar')!;
-  avatar.textContent = data.avatarInitial;
-  avatar.style.backgroundImage = '';
+  const bioEl = root.querySelector<HTMLElement>('.profile-bio');
+  if (bioEl) bioEl.textContent = data.bio ?? '';
 
-  // 최근 글
-  const postsEl = root.querySelector<HTMLElement>('.profile-posts-list')!;
-  postsEl.innerHTML = '';
+  const addrEl = root.querySelector<HTMLElement>('.profile-address');
+  if (addrEl) addrEl.textContent = shortenAddress(data.address);
 
-  data.posts.forEach((post) => {
-    const row = el(
-      'a.profile-post-row',
-      { href: `/post/${post.id}` },
-      el('div.profile-post-content', post.content),
-      el('div.profile-post-meta', post.timeAgo),
-    ) as HTMLAnchorElement;
+  const avatar = root.querySelector<HTMLElement>('.profile-avatar');
+  if (avatar) {
+    avatar.textContent = data.avatarInitial;
+    avatar.style.backgroundImage = '';
+  }
 
-    postsEl.appendChild(row);
-  });
+  // 🔽 포스트 리스트는 shared 템플릿(postCard) 스타일을 그대로 사용하므로 수정하지 않는다.
 }
 
 /** 내부 링크를 SPA 라우터로 연결 */
@@ -122,6 +116,198 @@ function setupInternalLinks(
       navigate(href);
     });
   });
+}
+
+/** 프로필 내용 안에 거래 패널을 mount (모달 버전) */
+function mountTradePanel(root: HTMLElement, profile: Profile) {
+  const contentOffset = root.querySelector<HTMLElement>('.profile-content-offset');
+  if (!contentOffset) return;
+
+  const statsRow = contentOffset.querySelector<HTMLElement>('.profile-stats-row');
+  if (!statsRow) return;
+
+  const tradeContainer = document.createElement('section');
+  tradeContainer.setAttribute('data-role', 'trade-panel-root');
+
+  // 순서: statsRow → tradeContainer → postsCard
+  statsRow.insertAdjacentElement('afterend', tradeContainer);
+
+  const personaAddress = profile.account as Address;
+
+  const getTraderAddress = () => {
+    const addr = tokenManager.getAddress?.();
+    return addr && addr.startsWith('0x') ? (addr as Address) : null;
+  };
+
+  new TradePanel(tradeContainer, {
+    personaAddress,
+    getTraderAddress,
+    onTraded: () => {
+      console.log('[user-profile-modal] trade completed for', personaAddress);
+    },
+  });
+}
+
+/** 모달에서 온체인 가격/공급량 갱신 */
+async function loadOnchainStats(root: HTMLElement, profile: Profile) {
+  try {
+    const account = profile.account;
+
+    // EVM 주소가 아니면 스킵
+    if (!account || !account.startsWith('0x')) return;
+
+    const { getBuyPrice, getPersonaSupply } = await import(
+      '../contracts/persona-fragments'
+    );
+
+    const personaAddress = account as Address;
+
+    const [priceWei, supply] = await Promise.all([
+      getBuyPrice(personaAddress, 1n),
+      getPersonaSupply(personaAddress),
+    ]);
+
+    const priceEth = formatEther(priceWei);
+
+    // Fragment Price
+    const priceElement = root.querySelector<HTMLElement>(
+      '[data-role="fragment-price"]',
+    );
+    if (priceElement) {
+      priceElement.textContent = `${priceEth} ETH`;
+    }
+
+    // Supply
+    const supplyElement = root.querySelector<HTMLElement>(
+      '[data-role="fragment-supply"]',
+    );
+    if (supplyElement) {
+      const anySupply = supply as any;
+      const supplyText =
+        typeof anySupply.toLocaleString === 'function'
+          ? anySupply.toLocaleString()
+          : supply.toString();
+
+      supplyElement.textContent = supplyText;
+    }
+  } catch (err) {
+    console.error('[user-profile-modal] loadOnchainStats error', err);
+    // 실패해도 SSR/DB 값 그대로 둔다.
+  }
+}
+
+/** 모달에서 현재 로그인한 trader의 보유 조각/채팅 CTA 처리 */
+async function loadUserHoldingOrChatCTA(
+  root: HTMLElement,
+  profile: Profile,
+  navigate?: (path: string) => void,
+) {
+  const ctaRoot = root.querySelector<HTMLElement>(
+    '[data-role="user-fragment-cta-root"]',
+  );
+  if (!ctaRoot) return;
+
+  try {
+    const personaAddress = profile.account as Address;
+
+    // persona가 EVM 주소가 아니면 UI 제거
+    if (!personaAddress || !personaAddress.startsWith('0x')) {
+      ctaRoot.remove();
+      return;
+    }
+
+    const traderAddress = tokenManager.getAddress?.();
+    if (!traderAddress || !traderAddress.startsWith('0x')) {
+      // 지갑 미연결이면 UI 감춤
+      ctaRoot.remove();
+      return;
+    }
+
+    const normalizedPersona = getAddress(
+      personaAddress as `0x${string}`,
+    ) as Address;
+    const normalizedTrader = getAddress(
+      traderAddress as `0x${string}`,
+    ) as Address;
+
+    const { getPersonaBalance } = await import(
+      '../contracts/persona-fragments'
+    );
+
+    const balance = await getPersonaBalance(
+      normalizedPersona,
+      normalizedTrader,
+    );
+
+    const isOwner =
+      normalizedPersona.toLowerCase() === normalizedTrader.toLowerCase();
+    const hasBalance = balance > 0n;
+
+    // owner도 아니고 balance도 0이면 UI 숨김
+    if (!isOwner && !hasBalance) {
+      ctaRoot.remove();
+      return;
+    }
+
+    const formatBigInt = (value: bigint) => {
+      const anyValue = value as any;
+      return typeof anyValue.toLocaleString === 'function'
+        ? anyValue.toLocaleString()
+        : value.toString();
+    };
+
+    const balanceText = formatBigInt(balance);
+
+    let pillHTML: string;
+
+    if (hasBalance) {
+      pillHTML = `
+        You hold
+        <span class="profile-user-cta-count">${balanceText}</span>
+        fragments
+      `;
+    } else {
+      pillHTML = `You are the creator`;
+    }
+
+    const subText = hasBalance
+      ? `As a fragment holder${isOwner ? ' (and creator)' : ''}, you can join this persona&apos;s private chat room.`
+      : `As the creator, you can join this persona&apos;s private chat room.`;
+
+    ctaRoot.innerHTML = `
+      <div class="profile-user-cta">
+        <div class="profile-user-cta-left">
+          <div class="profile-user-cta-pill">
+            ${pillHTML}
+          </div>
+          <div class="profile-user-cta-subtext">
+            ${subText}
+          </div>
+        </div>
+        <button type="button" class="profile-chat-btn" data-action="enter-chat-room">
+          <span class="profile-chat-btn-icon">💬</span>
+          <span>Enter Chat Room</span>
+        </button>
+      </div>
+    `;
+
+    const button = ctaRoot.querySelector<HTMLButtonElement>(
+      '[data-action="enter-chat-room"]',
+    );
+    if (button) {
+      button.addEventListener('click', () => {
+        const url = `/chat/${normalizedPersona}`;
+        if (navigate) {
+          navigate(url);
+        } else {
+          window.location.href = url;
+        }
+      });
+    }
+  } catch (err) {
+    console.error('[user-profile-modal] loadUserHoldingOrChatCTA error', err);
+    ctaRoot.remove();
+  }
 }
 
 /* =========================
@@ -195,13 +381,14 @@ export function createUserProfileModal(
    * ------------------------*/
   (async () => {
     try {
-      const { profile, posts, personaFragments } = await fetchPersonaProfile(profileId);
+      const { profile, posts, personaFragments } =
+        await fetchPersonaProfile(profileId);
       const data = toUserProfileData(profile, posts);
 
       // 기존 로딩 제거
       content.innerHTML = '';
 
-      // 실제 프로필 DOM 생성
+      // 실제 프로필 DOM 생성 (SSR/SPA 공용 템플릿 재사용)
       const profileRoot = profileTemplate(
         el,
         profile,
@@ -211,19 +398,38 @@ export function createUserProfileModal(
 
       profileRoot.classList.add('user-profile-modal-body');
 
-      // 데이터 적용
+      // 기본 데이터 적용 (텍스트/아바타만)
       applyProfileData(profileRoot, data);
 
       // 내부 링크 처리
       setupInternalLinks(profileRoot, modal, navigate);
 
-      // 최종 DOM 삽입
+      // DOM 삽입
       content.appendChild(profileRoot);
 
-      // 제목도 업데이트
+      // 제목 업데이트
       titleEl.textContent = data.name;
 
-      // ✅ 내 프로필 모달인 경우, profileManager.change 구독
+      // 프로필 탭과 동일한 인터랙티브 기능들 mount
+      try {
+        mountTradePanel(profileRoot, profile);
+        loadUserHoldingOrChatCTA(profileRoot, profile, navigate).catch((err) => {
+          console.error(
+            '[user-profile-modal] failed to load user holding/chat CTA',
+            err,
+          );
+        });
+        loadOnchainStats(profileRoot, profile).catch((err) => {
+          console.error(
+            '[user-profile-modal] failed to load on-chain stats',
+            err,
+          );
+        });
+      } catch (e) {
+        console.error('[user-profile-modal] setup interactive features failed', e);
+      }
+
+      // ✅ 내 프로필 모달인 경우, profileManager.change 구독해서 실시간 업데이트
       try {
         const myAddr = tokenManager.getAddress?.();
         if (myAddr) {

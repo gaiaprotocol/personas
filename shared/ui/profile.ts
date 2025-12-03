@@ -1,4 +1,5 @@
 import { AnyBuilder } from '@webtaku/any-builder';
+import { formatEther } from 'viem';
 import { PersonaFragments } from '../types/persona-fragments';
 import { PersonaPost } from '../types/post';
 import { Profile } from '../types/profile';
@@ -39,7 +40,7 @@ export function profile(
   // ===== Persona fragment-related stats =====
   const fragmentPriceText =
     personaFragments?.lastPrice && personaFragments.lastPrice.trim().length > 0
-      ? personaFragments.lastPrice
+      ? `${Number(formatEther(BigInt(personaFragments.lastPrice))).toFixed(4)} ETH`
       : '–';
 
   const holderCountText =
