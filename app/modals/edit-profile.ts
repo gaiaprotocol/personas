@@ -104,32 +104,34 @@ const socialInputsToRecord = (inputs: SocialLinkInput[]): SocialLinks => {
   return result;
 };
 
-/* SocialLinks 동등성 비교 (공백/빈 값 정규화) */
+/* ===== 소셜 링크 동등성 비교 (순서까지 포함) ===== */
+
+// 원본 소셜 링크 상태를 배열로 보관하기 위한 타입
+type SimpleSocial = { label: string; url: string };
+
+const normalizeSocialArray = (arr: SimpleSocial[]): SimpleSocial[] =>
+  arr
+    .map((l) => ({
+      label: l.label.trim(),
+      url: l.url.trim(),
+    }))
+    .filter((l) => l.label || l.url);
+
 const socialsEqual = (
-  original: SocialLinks,
+  original: SimpleSocial[],
   currentInputs: SocialLinkInput[],
 ): boolean => {
-  const normRecord = (obj: SocialLinks): SocialLinks => {
-    const res: SocialLinks = {};
-    Object.entries(obj)
-      .map(([label, url]) => [label.trim(), url.trim()] as [string, string])
-      .filter(([label, url]) => label || url)
-      .forEach(([label, url]) => {
-        res[label] = url;
-      });
-    return res;
-  };
+  const a = normalizeSocialArray(original);
+  const b = normalizeSocialArray(
+    currentInputs.map((l) => ({ label: l.label, url: l.url })),
+  );
 
-  const a = normRecord(original);
-  const b = normRecord(socialInputsToRecord(currentInputs));
+  if (a.length !== b.length) return false;
 
-  const keysA = Object.keys(a);
-  const keysB = Object.keys(b);
-
-  if (keysA.length !== keysB.length) return false;
-
-  for (const key of keysA) {
-    if (a[key] !== b[key]) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].label !== b[i].label || a[i].url !== b[i].url) {
+      return false;
+    }
   }
 
   return true;
@@ -322,15 +324,56 @@ export function createEditProfileModal(address: string, token: string) {
 
   let socialLinkInputs: SocialLinkInput[] = [];
 
+  // 원본 소셜 링크 상태를 배열로 저장 (순서 포함)
+  let originalSocialInputs: SimpleSocial[] = [];
+
   const socialListContainer = el(
     'div.edit-profile-social-list',
   ) as HTMLDivElement;
+
+  // [NEW] 소셜 링크 순서 변경 함수
+  const moveSocialLink = (id: string, direction: 'up' | 'down') => {
+    const index = socialLinkInputs.findIndex((l) => l.id === id);
+    if (index === -1) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= socialLinkInputs.length) return;
+
+    const [item] = socialLinkInputs.splice(index, 1);
+    socialLinkInputs.splice(newIndex, 0, item);
+
+    renderSocialList();
+    updateSaveButtonState();
+  };
 
   const createSocialRow = (link: SocialLinkInput, index: number) => {
     const rowTitle = el(
       'div.edit-profile-social-row-title',
       link.label || `Link ${index + 1}`,
     ) as HTMLDivElement;
+
+    // [NEW] 위/아래 이동 버튼
+    const moveUpBtn = el(
+      'ion-button',
+      {
+        fill: 'clear',
+        size: 'small',
+        color: 'medium',
+        onclick: () => moveSocialLink(link.id, 'up'),
+      },
+      el('ion-icon', { name: 'chevron-up-outline', slot: 'icon-only' }),
+    ) as HTMLIonButtonElement;
+
+    const moveDownBtn = el(
+      'ion-button',
+      {
+        fill: 'clear',
+        size: 'small',
+        color: 'medium',
+        onclick: () => moveSocialLink(link.id, 'down'),
+      },
+      el('ion-icon', { name: 'chevron-down-outline', slot: 'icon-only' }),
+    ) as HTMLIonButtonElement;
 
     const deleteBtn = el(
       'ion-button',
@@ -350,7 +393,12 @@ export function createEditProfileModal(address: string, token: string) {
     const headerRow = el(
       'div.edit-profile-social-row-header',
       rowTitle,
-      el('div.edit-profile-social-row-actions', deleteBtn),
+      el(
+        'div.edit-profile-social-row-actions',
+        moveUpBtn,
+        moveDownBtn,
+        deleteBtn,
+      ),
     );
 
     const labelInput = el('ion-input', {
@@ -568,7 +616,7 @@ export function createEditProfileModal(address: string, token: string) {
       (avatarPreviewUrl || null) !== (originalAvatarUrl || null);
 
     const socialsChanged = !socialsEqual(
-      originalProfile.socialLinks,
+      originalSocialInputs,
       socialLinkInputs,
     );
 
@@ -635,6 +683,12 @@ export function createEditProfileModal(address: string, token: string) {
         }),
       );
 
+      // 원본 소셜 배열 저장 (순서 포함)
+      originalSocialInputs = socialLinkInputs.map((l) => ({
+        label: l.label,
+        url: l.url,
+      }));
+
       if (!socialLinkInputs.length) addLink();
       else renderSocialList();
 
@@ -659,6 +713,7 @@ export function createEditProfileModal(address: string, token: string) {
       };
 
       socialLinkInputs = [];
+      originalSocialInputs = []; // 원본도 빈 배열로 초기화
       addLink();
 
       originalBannerUrl = null;

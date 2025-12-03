@@ -2728,7 +2728,9 @@ img.jazzicon {
   --accent-blue: #1da1f2;
 }
 
-/* 전체 래퍼 ------------------------------------------------------------- */
+/* ------------------------------------------------------------------
+ * Layout shell
+ * ------------------------------------------------------------------ */
 
 .profile-wrapper {
   background: var(--bg-page);
@@ -2749,13 +2751,13 @@ img.jazzicon {
   gap: 1.5rem;
 }
 
-/* 상단 히어로 ----------------------------------------------------------- */
+/* ------------------------------------------------------------------
+ * Hero (cover + main profile card)
+ * ------------------------------------------------------------------ */
 
 .profile-hero {
   position: relative;
 }
-
-/* 커버 이미지 자리 */
 
 .profile-cover {
   background: #111;
@@ -2763,7 +2765,7 @@ img.jazzicon {
   height: 170px;
 }
 
-/* Edit Profile 버튼 */
+/* Edit Profile button */
 
 .profile-edit-btn {
   position: absolute;
@@ -2786,7 +2788,7 @@ img.jazzicon {
   transform: translateY(-1px);
 }
 
-/* 공통 카드 */
+/* Generic card */
 
 .profile-card {
   background: var(--bg-card);
@@ -2795,7 +2797,7 @@ img.jazzicon {
   padding: 1.5rem;
 }
 
-/* 메인 프로필 카드 (커버 위로 올라온 카드) */
+/* Main profile card placed over the cover */
 
 .profile-main-card {
   position: absolute;
@@ -2807,13 +2809,14 @@ img.jazzicon {
   padding: 1.5rem 1.75rem;
 }
 
-/* 메인 카드 높이만큼 아래쪽 여백 */
-
 .profile-content-offset {
-  margin-top: 20px;
+  margin-top: 64px;
+  /* space under hero card */
 }
 
-/* 기본 정보 ------------------------------------------------------------- */
+/* ------------------------------------------------------------------
+ * Primary profile info
+ * ------------------------------------------------------------------ */
 
 .profile-main {
   display: flex;
@@ -2825,8 +2828,8 @@ img.jazzicon {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  background: #fff;
-  color: #000;
+  background: #ffffff;
+  color: #000000;
   font-size: 1.8rem;
   font-weight: 800;
   display: flex;
@@ -2858,7 +2861,55 @@ img.jazzicon {
   word-break: break-all;
 }
 
-/* 통계 카드 ------------------------------------------------------------- */
+/* ------------------------------------------------------------------
+ * Social links as small chips under the main info
+ * ------------------------------------------------------------------ */
+
+.profile-social-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.profile-social-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: #131313;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease,
+    transform 0.06s ease, color 0.12s ease;
+}
+
+.profile-social-chip:hover {
+  background: #1a1a1a;
+  border-color: #333;
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.profile-social-chip-icon {
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-social-chip-label {
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------
+ * Stats cards (fragment price / holders / supply)
+ * ------------------------------------------------------------------ */
 
 .profile-stats-row {
   display: flex;
@@ -2887,79 +2938,100 @@ img.jazzicon {
   font-size: 1.2rem;
 }
 
-/* 소셜 링크 카드 -------------------------------------------------------- */
+/* ------------------------------------------------------------------
+ * User fragments / chat CTA
+ * ------------------------------------------------------------------ */
 
-.profile-connect-card {
-  max-width: 640px;
-  margin: 1.25rem auto 0;
+.profile-user-cta-card {
+  margin-top: 0.9rem;
+  border-radius: 18px;
+  background: radial-gradient(circle at top left, #262626 0, #111 45%, #050505 100%);
+  border: 1px solid rgba(244, 208, 63, 0.15);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
 }
 
-.profile-section-title {
-  font-size: 0.95rem;
-  font-weight: 700;
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
-.profile-social-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.profile-social-row {
-  background: var(--bg-card-soft);
-  border-radius: 12px;
-  padding: 0.82rem 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border: 1px solid var(--border-subtle);
-  text-decoration: none;
-  color: var(--text-primary);
-  transition: background 0.15s ease, border-color 0.15s ease,
-    transform 0.06s ease;
-}
-
-.profile-social-row:hover {
-  background: #191919;
-  border-color: #2a2a2a;
-  transform: translateY(-1px);
-}
-
-.profile-social-left {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.profile-social-icon,
-.profile-social-open-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.profile-social-icon {
-  font-size: 1.25rem;
-}
-
-.profile-social-label {
-  font-size: 0.95rem;
-}
-
-.profile-social-open-icon {
-  font-size: 0.95rem;
+.profile-user-cta-loading {
+  font-size: 0.85rem;
   color: var(--text-secondary);
 }
 
-/* empty 상태 */
+/* Real content wrapper (when hydrated) */
 
-.profile-social-empty {
-  opacity: 0.8;
+.profile-user-cta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.25rem;
 }
 
-/* Recent Posts ---------------------------------------------------------- */
+.profile-user-cta-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.profile-user-cta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(244, 208, 63, 0.08);
+  border: 1px solid rgba(244, 208, 63, 0.32);
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.profile-user-cta-count {
+  font-weight: 700;
+  color: var(--accent-yellow);
+  font-size: 0.9rem;
+}
+
+.profile-user-cta-subtext {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Chat room button */
+
+.profile-chat-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 0.48rem 1.2rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--accent-blue), #5f9bff);
+  color: #000;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  box-shadow: 0 10px 30px rgba(0, 123, 255, 0.4);
+  transition: transform 0.12s ease, opacity 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.profile-chat-btn:hover {
+  opacity: 0.96;
+  transform: translateY(-1px);
+  box-shadow: 0 14px 35px rgba(0, 123, 255, 0.55);
+}
+
+.profile-chat-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 8px 22px rgba(0, 123, 255, 0.35);
+}
+
+.profile-chat-btn-icon {
+  font-size: 1rem;
+}
+
+/* ------------------------------------------------------------------
+ * Recent posts
+ * ------------------------------------------------------------------ */
 
 .profile-posts-card {
   margin-top: 1.5rem;
@@ -2977,13 +3049,9 @@ img.jazzicon {
   gap: 0.9rem;
 }
 
-/* 여기서 postCard(.post-card--profile)가 사용됨 */
-
 .profile-posts-list .post-card.post-card--profile {
   margin: 0;
 }
-
-/* “No posts yet” */
 
 .profile-posts-empty {
   padding: 1rem 0 0.5rem;
@@ -2991,7 +3059,9 @@ img.jazzicon {
   color: var(--text-secondary);
 }
 
-/* 모바일 --------------------------------------------------------------- */
+/* ------------------------------------------------------------------
+ * Responsive tweaks
+ * ------------------------------------------------------------------ */
 
 @media (max-width: 600px) {
   .profile-wrapper {
@@ -3018,16 +3088,22 @@ img.jazzicon {
   }
 
   .profile-content-offset {
-    margin-top: 128px;
+    margin-top: 142px;
   }
 
   .profile-stats-row {
     flex-direction: column;
-    margin-top: 4rem;
+    margin-top: 24px;
   }
 
-  .profile-connect-card {
-    margin-top: 1rem;
+  .profile-user-cta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-chat-btn {
+    align-self: stretch;
+    justify-content: center;
   }
 }
 /*!**************************************************************************************************!*\

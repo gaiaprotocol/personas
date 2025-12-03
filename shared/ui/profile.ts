@@ -1,7 +1,7 @@
 import { AnyBuilder } from '@webtaku/any-builder';
+import { PersonaFragments } from '../types/persona-fragments';
 import { PersonaPost } from '../types/post';
 import { Profile } from '../types/profile';
-import { PersonaFragments } from '../types/persona-fragments';
 import { postCard } from '../ui/post';
 import {
   avatarInitialFromName,
@@ -9,10 +9,10 @@ import {
 } from '../utils/formatting';
 
 /**
- * 프로필 페이지 전체 템플릿
- * - 서버: h 빌더로 호출(SSR)
- * - 클라이언트: el 빌더로 호출(SPA)
- * - 이벤트/상태 없음, data-* 훅만 제공
+ * Profile page template (SSR/SPA compatible)
+ * - Server: called with `h` builder (SSR)
+ * - Client: called with `el` builder (SPA)
+ * - No internal state/event wiring, only data-* hooks for external scripts
  */
 export function profile(
   b: AnyBuilder,
@@ -36,7 +36,7 @@ export function profile(
 
   const socialLinks = profile.socialLinks ?? {};
 
-  // ===== personaFragments 기반 숫자들 =====
+  // ===== Persona fragment-related stats =====
   const fragmentPriceText =
     personaFragments?.lastPrice && personaFragments.lastPrice.trim().length > 0
       ? personaFragments.lastPrice
@@ -45,14 +45,89 @@ export function profile(
   const holderCountText =
     typeof personaFragments?.holderCount === 'number'
       ? personaFragments.holderCount.toLocaleString()
-      : '–';
+      : '0';
 
   const currentSupplyText =
-    personaFragments?.currentSupply && personaFragments.currentSupply.trim().length > 0
+    personaFragments?.currentSupply &&
+      personaFragments.currentSupply.trim().length > 0
       ? personaFragments.currentSupply
-      : '–';
+      : '0';
 
-  // ===== Hero / 메인 프로필 카드 =====
+  // ===== Social links (all entries, icon inferred from URL) =====
+  const inferSocialIcon = (url: string): string => {
+    try {
+      const u = new URL(url);
+      const host = u.hostname.toLowerCase().replace(/^www\./, '');
+
+      if (host.includes('twitter.com') || host === 'x.com') {
+        return 'logo-twitter';
+      }
+      if (host.includes('discord.com') || host.includes('discord.gg')) {
+        return 'logo-discord';
+      }
+      if (host.includes('github.com')) {
+        return 'logo-github';
+      }
+      if (host === 'youtu.be' || host.includes('youtube.com')) {
+        return 'logo-youtube';
+      }
+      if (
+        host.includes('t.me') ||
+        host.includes('telegram.me') ||
+        host.includes('telegram.org')
+      ) {
+        return 'paper-plane-outline';
+      }
+      if (host.includes('linkedin.com')) {
+        return 'logo-linkedin';
+      }
+      if (host.includes('instagram.com')) {
+        return 'logo-instagram';
+      }
+
+      return 'link-outline';
+    } catch {
+      return 'link-outline';
+    }
+  };
+
+  const socialEntries = Object.entries(socialLinks).filter(
+    ([, url]) => !!url && url.toString().trim().length > 0,
+  );
+
+  const socialChips =
+    socialEntries.length > 0
+      ? b(
+        'div.profile-social-chips',
+        ...socialEntries.map(([label, url]) => {
+          const href = url.toString().trim();
+          const iconName = inferSocialIcon(href);
+
+          let displayLabel = label.trim();
+          if (!displayLabel) {
+            try {
+              const u = new URL(href);
+              displayLabel = u.hostname.replace(/^www\./, '');
+            } catch {
+              displayLabel = href;
+            }
+          }
+
+          return b(
+            'a.profile-social-chip',
+            {
+              href,
+              target: '_blank',
+              rel: 'noreferrer noopener',
+            } as any,
+            b('ion-icon.profile-social-chip-icon', { name: iconName }),
+            b('span.profile-social-chip-label', displayLabel),
+          );
+        }),
+      )
+      : null;
+
+  // ===== Hero / main profile card =====
   const editButton = b(
     'button.profile-edit-btn',
     {
@@ -63,17 +138,22 @@ export function profile(
     'Edit Profile',
   );
 
+  const profileMainTextChildren: any[] = [
+    b('div.profile-name', displayName),
+    b('div.profile-bio', bio),
+    b('div.profile-address', shortAddress),
+  ];
+
+  if (socialChips) {
+    profileMainTextChildren.push(socialChips);
+  }
+
   const mainProfileCard = b(
     'section.profile-card.profile-main-card',
     b(
       'div.profile-main',
       b('div.profile-avatar', avatarInitial),
-      b(
-        'div.profile-main-text',
-        b('div.profile-name', displayName),
-        b('div.profile-bio', bio),
-        b('div.profile-address', shortAddress),
-      ),
+      b('div.profile-main-text', ...profileMainTextChildren),
     ),
   );
 
@@ -84,64 +164,7 @@ export function profile(
     mainProfileCard,
   );
 
-  // ===== Connect With Me (소셜 링크 카드) =====
-  const socialItems = [
-    {
-      key: 'twitter',
-      label: 'Twitter / X',
-      icon: 'logo-twitter',
-    },
-    {
-      key: 'discord',
-      label: 'Discord',
-      icon: 'logo-discord',
-    },
-    {
-      key: 'website',
-      label: 'Website',
-      icon: 'link-outline',
-    },
-  ] as const;
-
-  const socialLinkNodes: any[] = socialItems
-    .filter((item) => !!socialLinks[item.key])
-    .map((item) => {
-      const href = socialLinks[item.key]!;
-      return b(
-        'a.profile-social-row',
-        {
-          href,
-          target: '_blank',
-          rel: 'noreferrer noopener',
-        } as any,
-        b(
-          'div.profile-social-left',
-          b('ion-icon.profile-social-icon', { name: item.icon }),
-          b('span.profile-social-label', item.label),
-        ),
-        b('ion-icon.profile-social-open-icon', { name: 'open-outline' }),
-      );
-    });
-
-  if (socialLinkNodes.length === 0) {
-    socialLinkNodes.push(
-      b(
-        'div.profile-social-row.profile-social-empty',
-        b(
-          'div.profile-social-left',
-          b('span.profile-social-label', 'No social links yet.'),
-        ),
-      ),
-    );
-  }
-
-  const connectCard = b(
-    'section.profile-card.profile-connect-card',
-    b('div.profile-section-title', 'Connect With Me'),
-    b('div.profile-social-list', ...socialLinkNodes),
-  );
-
-  // ===== Stats: 프래그먼트 가격 / 홀더 수 / 공급량 =====
+  // ===== Stats: fragment price / holder count / supply =====
   const statsRow = b(
     'div.profile-stats-row',
     b(
@@ -179,7 +202,16 @@ export function profile(
     ),
   );
 
-  // ===== Recent Posts 카드 =====
+  // ===== User-specific fragment / chat CTA placeholder =====
+  const userFragmentCta = b(
+    'section.profile-card.profile-user-cta-card',
+    {
+      'data-role': 'user-fragment-cta-root',
+    } as any,
+    b('div.profile-user-cta-loading', 'Loading your fragments...'),
+  );
+
+  // ===== Recent Posts card =====
   const postsCardBody =
     posts.length > 0
       ? b(
@@ -201,8 +233,8 @@ export function profile(
     postsCardBody,
   );
 
-  // ===== 전체 조립 =====
-  // 순서: 소셜 링크 → Stats → (TradePanel 이 여기 사이에 끼어들 예정) → Posts
+  // ===== Assemble whole layout =====
+  // Order: hero → user fragment CTA → stats → posts
   const root = b(
     'section.profile-wrapper',
     b(
@@ -210,7 +242,7 @@ export function profile(
       heroSection,
       b(
         'div.profile-content-offset',
-        connectCard,
+        userFragmentCta,
         statsRow,
         postsCard,
       ),
