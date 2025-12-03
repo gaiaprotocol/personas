@@ -66,6 +66,10 @@ export class ChatTab {
   private messagesEl!: HTMLElement;
   private inputEl!: HTMLInputElement;
 
+  // Mobile(modal) chat area refs
+  private mobileMessagesEl: HTMLElement | null = null;
+  private mobileThreadId: string | null = null;
+
   // Router callback
   private navigate?: (path: string) => void;
 
@@ -596,8 +600,17 @@ export class ChatTab {
           thread.messages.push(view);
         }
 
-        if (this.currentThread && this.currentThread.id === thread.id) {
+        const isCurrentDesktop =
+          this.currentThread && this.currentThread.id === thread.id;
+        const isCurrentMobile =
+          this.mobileMessagesEl && this.mobileThreadId === thread.id;
+
+        if (isCurrentDesktop) {
           this.renderCurrentThread();
+        }
+
+        if (isCurrentMobile && this.mobileMessagesEl) {
+          this.renderMessagesInto(thread, this.mobileMessagesEl);
         }
       }
 
@@ -719,9 +732,20 @@ export class ChatTab {
 
     thread.messages.push(view);
 
-    if (this.currentThread && this.currentThread.id === thread.id) {
+    const isCurrentDesktop =
+      this.currentThread && this.currentThread.id === thread.id;
+    const isCurrentMobile =
+      this.mobileMessagesEl && this.mobileThreadId === thread.id;
+
+    if (isCurrentDesktop) {
       this.renderCurrentThread();
-    } else {
+    }
+
+    if (isCurrentMobile && this.mobileMessagesEl) {
+      this.renderMessagesInto(thread, this.mobileMessagesEl);
+    }
+
+    if (!isCurrentDesktop && !isCurrentMobile) {
       thread.unreadCount += 1;
       this.renderThreadList();
     }
@@ -734,7 +758,10 @@ export class ChatTab {
   private openMobileChatModal(thread: ChatThread) {
     const modal = el('ion-modal.chat-room-modal') as any;
 
-    const backIcon = el('ion-icon', { name: 'chevron-back-outline', slot: 'icon-only' });
+    const backIcon = el('ion-icon', {
+      name: 'chevron-back-outline',
+      slot: 'icon-only',
+    });
 
     const backInnerButton = el(
       'ion-button',
@@ -786,7 +813,11 @@ export class ChatTab {
     const messagesEl = el('div.chat-messages');
     this.renderMessagesInto(thread, messagesEl);
 
-    // ion-input 대신 그냥 native input
+    // 현재 모달 상태 저장
+    this.mobileMessagesEl = messagesEl;
+    this.mobileThreadId = thread.id;
+
+    // native input
     const input = el('input', {
       type: 'text',
       placeholder: 'Type a message...',
@@ -804,7 +835,7 @@ export class ChatTab {
       this.renderMessagesInto(thread, messagesEl);
     };
 
-    input.addEventListener('keyup', async (ev: any) => {
+    input.addEventListener('keydown', async (ev: KeyboardEvent) => {
       if (ev.key === 'Enter' && !ev.shiftKey) {
         ev.preventDefault();
         await sendFromModal();
@@ -836,11 +867,15 @@ export class ChatTab {
     modal.present();
 
     modal.addEventListener('ionModalDidPresent', () => {
+      // 레이아웃 확정 이후 한 번 더 스크롤 아래로
       this.renderMessagesInto(thread, messagesEl);
     });
 
     modal.addEventListener('ionModalDidDismiss', () => {
       modal.remove();
+      // 모달 닫힐 때 ref 정리
+      this.mobileMessagesEl = null;
+      this.mobileThreadId = null;
     });
   }
 }
