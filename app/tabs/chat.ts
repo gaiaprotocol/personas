@@ -1,156 +1,201 @@
+import { tokenManager } from '@gaiaprotocol/client-common';
 import { el } from '@webtaku/el';
-import './chat.css';
+import type { PersonaChatMessage } from '../../shared/types/chat';
+import type { PersonaFragmentHolding } from '../../shared/types/persona-fragments';
+import {
+  buildPersonaChatWsUrl,
+  fetchPersonaChatMessages,
+  sendPersonaChatMessage,
+} from '../api/chat';
+import { fetchHeldPersonaFragments } from '../api/persona-fragments';
+import { openLoginModal } from '../modals/login';
 import { createUserProfileModal } from '../modals/profile';
+import './chat.css';
+import { showErrorAlert } from '../components/alert';
 
 type Sender = 'you' | 'other';
 
-interface ChatMessage {
-  id: string;
+interface ViewChatMessage {
+  id: number;
   sender: Sender;
-  author: string; // "You", "Luna Park" 등
+  author: string; // "You", "0x1234…abcd" etc
   text: string;
   time: string;   // "2:45 PM"
+  raw: PersonaChatMessage;
 }
 
 interface ChatThread {
-  id: string;
+  id: string;             // UI id (persona address)
+  personaAddress: string; // 0x...
   name: string;
   holdersInChat: number;
   unreadCount: number;
   avatarInitial: string;
-  messages: ChatMessage[];
+  messages: ViewChatMessage[];
 }
 
-/** 데모용 샘플 데이터 */
-const sampleThreads: ChatThread[] = [
-  {
-    id: 'alex',
-    name: 'Alex Chen',
-    holdersInChat: 342,
-    unreadCount: 2,
-    avatarInitial: 'A',
-    messages: [
-      {
-        id: 'm1',
-        sender: 'other',
-        author: 'Luna Park',
-        text: 'Hey everyone! Just bought more fragments 🚀',
-        time: '2:45 PM'
-      },
-      {
-        id: 'm2',
-        sender: 'other',
-        author: 'Noah Tech',
-        text: 'Same here! The bonding curve is looking good',
-        time: '2:46 PM'
-      },
-      {
-        id: 'm3',
-        sender: 'you',
-        author: 'You',
-        text: 'Thanks for the support everyone! This community is amazing',
-        time: '2:47 PM'
-      }
-    ]
-  },
-  {
-    id: 'luna',
-    name: 'Luna Park',
-    holdersInChat: 521,
-    unreadCount: 0,
-    avatarInitial: 'L',
-    messages: [
-      {
-        id: 'm4',
-        sender: 'other',
-        author: 'Luna Park',
-        text: 'Welcome to the channel 👋',
-        time: '1:12 PM'
-      }
-    ]
-  },
-  {
-    id: 'noah',
-    name: 'Noah Tech',
-    holdersInChat: 198,
-    unreadCount: 5,
-    avatarInitial: 'N',
-    messages: [
-      {
-        id: 'm5',
-        sender: 'other',
-        author: 'Noah Tech',
-        text: 'GM frens ☕️',
-        time: '9:21 AM'
-      }
-    ]
-  }
-];
+type ChatWsEvent =
+  | { type: 'hello'; persona: string; address: string }
+  | { type: 'message'; message: PersonaChatMessage }
+  | {
+    type: 'reaction_added' | 'reaction_removed';
+    messageId: number;
+    reactor: string;
+    reactionType: string;
+  };
 
 export class ChatTab {
   el: HTMLElement;
 
-  private threads: ChatThread[];
-  private filteredThreads: ChatThread[];
+  private threads: ChatThread[] = [];
+  private filteredThreads: ChatThread[] = [];
   private currentThread: ChatThread | null = null;
 
   private threadListEl!: HTMLElement;
 
-  // 데스크톱 채팅 영역 레퍼런스
+  // Desktop chat area refs
   private mainNameEl!: HTMLElement;
   private mainStatusEl!: HTMLElement;
   private messagesEl!: HTMLElement;
   private inputEl!: HTMLInputElement;
 
-  // 🔹 추가: 라우팅용 콜백
+  // Router callback
   private navigate?: (path: string) => void;
 
-  // 🔹 생성자에서 navigate 주입
+  // WebSocket state
+  private ws: WebSocket | null = null;
+  private wsPersona: string | null = null;
+
+  // Async initialization latch
+  private initPromise: Promise<void> | null = null;
+
   constructor(navigate?: (path: string) => void) {
     this.navigate = navigate;
 
-    this.threads = sampleThreads;
-    this.filteredThreads = [...this.threads];
-    this.currentThread = this.threads[0] ?? null;
-
     this.el = el('section.chat-wrapper');
-
     const shell = el('div.chat-shell');
 
-    // 사이드바
     const sidebar = this.buildSidebar();
-
-    // 데스크톱 메인 채팅 영역
     const desktopMain = this.buildDesktopMain();
 
     shell.append(sidebar, desktopMain);
     this.el.append(shell);
 
-    // 🔹 상단 유저 이름 클릭 시 /profile/:id 로 이동
+    // Profile link from desktop header
     this.mainNameEl.addEventListener('click', (e) => {
       if (!this.navigate || !this.currentThread) return;
       e.preventDefault();
-      this.navigate(`/profile/${this.currentThread.id}`);
+      const addr = this.currentThread.personaAddress;
+      this.navigate(`/profile/${addr}`);
     });
 
     this.renderThreadList();
-    this.renderCurrentThread();
+
+    // Kick off async initialization
+    this.initPromise = this.initThreads();
+    this.initPromise.catch((err) =>
+      console.error('[ChatTab] initThreads failed', err),
+    );
   }
 
-  /* ---------------- 사이드바 ---------------- */
+  /**
+   * Public helper: open chat room for a specific persona address.
+   * Used by router for /chat/:personaAddress deep link.
+   */
+  public async openPersonaRoom(personaAddress: string) {
+    await this.ensureThreadsInitialized();
+
+    const target = this.threads.find(
+      (t) => t.personaAddress.toLowerCase() === personaAddress.toLowerCase(),
+    );
+
+    if (!target) {
+      showErrorAlert('Chat not available', 'You do not hold this persona or chat is not available.');
+      return;
+    }
+
+    await this.activateThread(target);
+
+    if (window.matchMedia('(max-width: 900px)').matches) {
+      this.openMobileChatModal(target);
+    }
+  }
+
+  /* ================================================================== */
+  /*  Initialization helpers                                            */
+  /* ================================================================== */
+
+  private async ensureThreadsInitialized() {
+    if (!this.initPromise) {
+      this.initPromise = this.initThreads();
+    }
+    await this.initPromise;
+  }
+
+  /**
+   * Load persona holdings and build chat thread list.
+   */
+  private async initThreads() {
+    const token = tokenManager.getToken?.();
+    if (!token) {
+      // Not logged in → keep empty list and rely on CTA in footer
+      this.threadListEl.innerHTML = '';
+      return;
+    }
+
+    try {
+      const { holdings } = await fetchHeldPersonaFragments(token);
+
+      this.threads = holdings.map((h: PersonaFragmentHolding) => {
+        const persona = h.personaAddress;
+        const name = this.shortenAddress(persona);
+        const avatarInitial = persona.slice(2, 3).toUpperCase();
+
+        return {
+          id: persona,
+          personaAddress: persona,
+          name,
+          holdersInChat: h.holderCount,
+          unreadCount: 0,
+          avatarInitial,
+          messages: [],
+        };
+      });
+
+      this.filteredThreads = [...this.threads];
+      this.currentThread = this.threads[0] ?? null;
+
+      this.renderThreadList();
+
+      if (this.currentThread) {
+        await this.activateThread(this.currentThread);
+      } else {
+        // No persona holdings: show helper message
+        this.threadListEl.innerHTML =
+          '<div style="padding:0.75rem 1.5rem; font-size:0.85rem; color:#888;">You do not hold any persona fragments yet.</div>';
+      }
+    } catch (err) {
+      console.error('[chat] failed to load held personas', err);
+      this.threadListEl.innerHTML =
+        '<div style="padding:0.75rem 1.5rem; font-size:0.85rem; color:#f97373;">Failed to load chat rooms. Please try again.</div>';
+    }
+  }
+
+  /* ================================================================== */
+  /*  Sidebar                                                           */
+  /* ================================================================== */
 
   private buildSidebar(): HTMLElement {
     const sidebar = el('div.chat-sidebar');
 
     const header = el(
       'div.chat-sidebar-header',
-      el('h2.chat-sidebar-title', 'Chat')
+      el('h2.chat-sidebar-title', 'Chat'),
     );
 
-    // 검색 인풋
     const searchInput = el('input.chat-search-input', {
       type: 'search',
-      placeholder: 'Search personas...'
+      placeholder: 'Search personas...',
     }) as HTMLInputElement;
 
     searchInput.addEventListener('input', () => {
@@ -159,12 +204,11 @@ export class ChatTab {
 
     const search = el('div.chat-search', searchInput);
 
-    // 스레드 리스트 컨테이너
     this.threadListEl = el('div.chat-thread-list');
 
     const footer = el(
       'div.chat-sidebar-footer',
-      'Chat only available to persona holders'
+      'Chat only available to persona holders',
     );
 
     sidebar.append(header, search, this.threadListEl, footer);
@@ -177,11 +221,10 @@ export class ChatTab {
       this.filteredThreads = [...this.threads];
     } else {
       this.filteredThreads = this.threads.filter((t) =>
-        t.name.toLowerCase().includes(q)
+        t.name.toLowerCase().includes(q),
       );
     }
 
-    // 현재 스레드가 필터에 없으면 첫 번째로 교체
     if (
       this.currentThread &&
       !this.filteredThreads.find((t) => t.id === this.currentThread!.id)
@@ -190,7 +233,7 @@ export class ChatTab {
     }
 
     this.renderThreadList();
-    this.renderCurrentThread();
+    if (this.currentThread) this.activateThread(this.currentThread);
   }
 
   private renderThreadList() {
@@ -206,27 +249,22 @@ export class ChatTab {
           el('div.chat-thread-name', thread.name),
           el(
             'div.chat-thread-sub',
-            `${thread.holdersInChat} holders in chat`
-          )
+            `${thread.holdersInChat} holders in chat`,
+          ),
         ),
         thread.unreadCount > 0
           ? el('div.chat-thread-unread', String(thread.unreadCount))
-          : null
+          : null,
       ) as HTMLElement;
 
       if (this.currentThread && this.currentThread.id === thread.id) {
         item.classList.add('active');
       }
 
-      // ✅ 여기서는 "채팅방 선택"만! 프로필로 안 감
       item.addEventListener('click', () => {
-        this.currentThread = thread;
-        thread.unreadCount = 0;
+        this.activateThread(thread);
 
-        this.renderThreadList();
-        this.renderCurrentThread();
-
-        // 모바일이면 모달로 채팅방 열기
+        // On mobile open full-screen modal
         if (window.matchMedia('(max-width: 900px)').matches) {
           this.openMobileChatModal(thread);
         }
@@ -236,7 +274,69 @@ export class ChatTab {
     });
   }
 
-  /* ---------------- 데스크톱 메인 채팅 영역 ---------------- */
+  /* ================================================================== */
+  /*  Thread activation + data load                                     */
+  /* ================================================================== */
+
+  private async activateThread(thread: ChatThread | null) {
+    if (!thread) return;
+
+    this.currentThread = thread;
+    this.renderThreadList();
+    this.mainNameEl.textContent = thread.name;
+    this.mainStatusEl.textContent = `${thread.holdersInChat} holders online`;
+
+    await this.loadMessagesForThread(thread);
+    this.renderMessagesInto(thread, this.messagesEl);
+
+    this.connectWebSocket(thread);
+  }
+
+  private async loadMessagesForThread(thread: ChatThread) {
+    try {
+      const res = await fetchPersonaChatMessages({
+        persona: thread.personaAddress,
+        limit: 100,
+        cursor: 0,
+      });
+
+      const myAddr = tokenManager.getAddress?.();
+      const lowerMy = myAddr?.toLowerCase() ?? null;
+
+      thread.messages = res.messages.map((m) => {
+        const senderType: Sender =
+          lowerMy && m.sender.toLowerCase() === lowerMy ? 'you' : 'other';
+
+        const author =
+          senderType === 'you' ? 'You' : this.shortenAddress(m.sender);
+
+        const time = new Date(m.createdAt * 1000).toLocaleTimeString([], {
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+
+        return {
+          id: m.id,
+          sender: senderType,
+          author,
+          text: m.content,
+          time,
+          raw: m,
+        };
+      });
+    } catch (err) {
+      console.error('[chat] failed to load messages', err);
+    }
+  }
+
+  private shortenAddress(addr: string) {
+    if (!addr.startsWith('0x') || addr.length <= 10) return addr;
+    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+  }
+
+  /* ================================================================== */
+  /*  Desktop main chat area                                            */
+  /* ================================================================== */
 
   private buildDesktopMain(): HTMLElement {
     const main = el('div.chat-main.chat-main-desktop');
@@ -249,15 +349,14 @@ export class ChatTab {
     const header = el(
       'div.chat-main-header',
       avatar,
-      el('div.chat-main-meta', this.mainNameEl, this.mainStatusEl)
+      el('div.chat-main-meta', this.mainNameEl, this.mainStatusEl),
     );
 
     this.messagesEl = el('div.chat-messages');
 
-    // 입력 영역
     this.inputEl = el('input.chat-input-field', {
       type: 'text',
-      placeholder: 'Type a message...'
+      placeholder: 'Type a message...',
     }) as HTMLInputElement;
 
     this.inputEl.addEventListener('keydown', (ev: KeyboardEvent) => {
@@ -269,20 +368,16 @@ export class ChatTab {
 
     const sendBtn = el(
       'button.chat-send-btn',
-      el('div.chat-send-btn-icon')
+      el('div.chat-send-btn-icon'),
     ) as HTMLButtonElement;
 
     sendBtn.addEventListener('click', () => this.sendMessageFromDesktop());
 
-    const inputInner = el(
-      'div.chat-input-inner',
-      this.inputEl,
-      sendBtn
-    );
+    const inputInner = el('div.chat-input-inner', this.inputEl, sendBtn);
 
     const note = el(
       'div.chat-input-note',
-      'Only persona holders can chat in this room'
+      'Only persona holders can chat in this room',
     );
 
     const inputBar = el('div.chat-input-bar', inputInner, note);
@@ -293,12 +388,9 @@ export class ChatTab {
 
   private renderCurrentThread() {
     if (!this.currentThread) return;
-
     this.mainNameEl.textContent = this.currentThread.name;
-    this.mainNameEl.setAttribute('href', `/profile/${this.currentThread.id}`);
     this.mainStatusEl.textContent = `${this.currentThread.holdersInChat} holders online`;
 
-    // 메시지 리스트 렌더
     this.renderMessagesInto(this.currentThread, this.messagesEl);
   }
 
@@ -308,18 +400,18 @@ export class ChatTab {
     thread.messages.forEach((m) => {
       const row = el(
         'div.chat-message-row',
-        { class: `chat-message-row ${m.sender}` }
+        { class: `chat-message-row ${m.sender}` },
       );
 
       const bubble = el(
         'div.chat-message-bubble',
         { class: `chat-message-bubble ${m.sender}` },
-        m.text
+        m.text,
       );
 
       const meta = el(
         'div.chat-message-meta',
-        m.sender === 'you' ? `You  ${m.time}` : `${m.author}  ${m.time}`
+        m.sender === 'you' ? `You  ${m.time}` : `${m.author}  ${m.time}`,
       );
 
       if (m.sender === 'other') {
@@ -336,41 +428,186 @@ export class ChatTab {
     });
   }
 
-  private sendMessageFromDesktop() {
+  private async sendMessageFromDesktop() {
     if (!this.currentThread) return;
 
     const text = this.inputEl.value.trim();
     if (!text) return;
 
-    this.sendMessageCommon(this.currentThread, text);
+    await this.sendMessageCommon(this.currentThread, text);
     this.inputEl.value = '';
   }
 
-  /* 공통 전송 로직 (데스크톱 + 모바일 모달에서 둘 다 사용) */
-  private sendMessageCommon(thread: ChatThread, text: string) {
-    const now = new Date();
-    const time = now.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit'
-    });
+  /* ================================================================== */
+  /*  Message send (shared)                                             */
+  /* ================================================================== */
 
-    const msg: ChatMessage = {
-      id: `local-${Date.now()}`,
-      sender: 'you',
-      author: 'You',
-      text,
-      time
-    };
+  private async sendMessageCommon(thread: ChatThread, text: string) {
+    const token = tokenManager.getToken?.();
+    if (!token) {
+      openLoginModal();
+      return;
+    }
 
-    thread.messages.push(msg);
+    try {
+      const msg = await sendPersonaChatMessage({
+        persona: thread.personaAddress,
+        content: text,
+        token,
+      });
 
-    // 현재 선택 스레드면 데스크톱 UI 갱신
-    if (this.currentThread && this.currentThread.id === thread.id) {
-      this.renderCurrentThread();
+      const myAddr = tokenManager.getAddress?.();
+      const senderType: Sender =
+        myAddr && msg.sender.toLowerCase() === myAddr.toLowerCase()
+          ? 'you'
+          : 'other';
+
+      const author =
+        senderType === 'you' ? 'You' : this.shortenAddress(msg.sender);
+
+      const time = new Date(msg.createdAt * 1000).toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+
+      const view: ViewChatMessage = {
+        id: msg.id,
+        sender: senderType,
+        author,
+        text: msg.content,
+        time,
+        raw: msg,
+      };
+
+      thread.messages.push(view);
+
+      if (this.currentThread && this.currentThread.id === thread.id) {
+        this.renderCurrentThread();
+      }
+    } catch (err: any) {
+      console.error('[chat] send failed', err);
+      alert(err?.message ?? 'Failed to send message');
     }
   }
 
-  /* ---------------- 모바일: ion-modal 채팅방 ---------------- */
+  /* ================================================================== */
+  /*  WebSocket                                                          */
+  /* ================================================================== */
+
+  private connectWebSocket(thread: ChatThread) {
+    const token = tokenManager.getToken?.();
+    if (!token) {
+      this.closeWebSocket();
+      return;
+    }
+
+    const persona = thread.personaAddress;
+
+    if (
+      this.ws &&
+      this.wsPersona === persona &&
+      this.ws.readyState === WebSocket.OPEN
+    ) {
+      return;
+    }
+
+    this.closeWebSocket();
+
+    const wsUrl = buildPersonaChatWsUrl(persona, token);
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      this.ws = ws;
+      this.wsPersona = persona;
+
+      ws.onopen = () => {
+        // noop
+      };
+
+      ws.onmessage = (event) => {
+        let data: ChatWsEvent;
+        try {
+          data = JSON.parse(event.data);
+        } catch (err) {
+          console.error('[chat] ws parse error', err);
+          return;
+        }
+
+        if (data.type === 'message') {
+          this.handleIncomingMessage(data.message);
+        }
+      };
+
+      ws.onerror = (ev) => {
+        console.error('[chat] ws error', ev);
+      };
+
+      ws.onclose = () => {
+        this.ws = null;
+        this.wsPersona = null;
+      };
+    } catch (err) {
+      console.error('[chat] ws connect failed', err);
+    }
+  }
+
+  private closeWebSocket() {
+    if (this.ws) {
+      try {
+        this.ws.close();
+      } catch {
+        // ignore
+      }
+    }
+    this.ws = null;
+    this.wsPersona = null;
+  }
+
+  private handleIncomingMessage(msg: PersonaChatMessage) {
+    const thread = this.threads.find(
+      (t) =>
+        t.personaAddress.toLowerCase() === msg.personaAddress.toLowerCase(),
+    );
+    if (!thread) return;
+
+    const myAddr = tokenManager.getAddress?.();
+    const senderType: Sender =
+      myAddr && msg.sender.toLowerCase() === myAddr.toLowerCase()
+        ? 'you'
+        : 'other';
+
+    const author =
+      senderType === 'you' ? 'You' : this.shortenAddress(msg.sender);
+
+    const time = new Date(msg.createdAt * 1000).toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+
+    const view: ViewChatMessage = {
+      id: msg.id,
+      sender: senderType,
+      author,
+      text: msg.content,
+      time,
+      raw: msg,
+    };
+
+    if (thread.messages.some((m) => m.id === msg.id)) return;
+
+    thread.messages.push(view);
+
+    if (this.currentThread && this.currentThread.id === thread.id) {
+      this.renderCurrentThread();
+    } else {
+      thread.unreadCount += 1;
+      this.renderThreadList();
+    }
+  }
+
+  /* ================================================================== */
+  /*  Mobile modal                                                       */
+  /* ================================================================== */
 
   private openMobileChatModal(thread: ChatThread) {
     const modal = el('ion-modal.chat-room-modal') as any;
@@ -380,9 +617,9 @@ export class ChatTab {
       {
         slot: 'start',
         fill: 'clear',
-        onclick: () => modal.dismiss()
+        onclick: () => modal.dismiss(),
       },
-      el('ion-icon', { name: 'chevron-back-outline' })
+      el('ion-icon', { name: 'chevron-back-outline' }),
     );
 
     const header = el(
@@ -390,8 +627,8 @@ export class ChatTab {
       el(
         'ion-toolbar',
         backBtn,
-        el('ion-title', thread.name)
-      )
+        el('ion-title', thread.name),
+      ),
     );
 
     const mobileMain = el('div.chat-main.chat-main-modal');
@@ -401,21 +638,21 @@ export class ChatTab {
     const nameEl = el('div.chat-main-name', thread.name);
     const statusEl = el(
       'div.chat-main-status',
-      `${thread.holdersInChat} holders online`
+      `${thread.holdersInChat} holders online`,
     );
 
     const mobileHeader = el(
       'div.chat-main-header',
       avatar,
-      el('div.chat-main-meta', nameEl, statusEl)
+      el('div.chat-main-meta', nameEl, statusEl),
     );
 
     avatar.addEventListener('click', () => {
-      createUserProfileModal(thread.id, this.navigate);
+      createUserProfileModal(thread.personaAddress, this.navigate);
     });
 
     nameEl.addEventListener('click', () => {
-      createUserProfileModal(thread.id, this.navigate);
+      createUserProfileModal(thread.personaAddress, this.navigate);
     });
 
     const messagesEl = el('div.chat-messages');
@@ -424,15 +661,17 @@ export class ChatTab {
     const input = el('ion-input', {
       placeholder: 'Type a message...',
       class: 'chat-input-field',
-      'aria-label': 'Message'
+      'aria-label': 'Message',
     }) as any;
 
     const sendFromModal = async () => {
-      const raw = (await input.getInputElement?.()) as HTMLInputElement | undefined;
+      const raw = (await input.getInputElement?.()) as
+        | HTMLInputElement
+        | undefined;
       const value = (raw?.value ?? '').trim();
       if (!value) return;
 
-      this.sendMessageCommon(thread, value);
+      await this.sendMessageCommon(thread, value);
       if (raw) raw.value = '';
 
       this.renderMessagesInto(thread, messagesEl);
@@ -448,29 +687,21 @@ export class ChatTab {
     const sendBtn = el(
       'button.chat-send-btn',
       { onclick: () => sendFromModal() },
-      el('div.chat-send-btn-icon')
+      el('div.chat-send-btn-icon'),
     );
 
-    const inputInner = el(
-      'div.chat-input-inner',
-      input,
-      sendBtn
-    );
+    const inputInner = el('div.chat-input-inner', input, sendBtn);
 
     const note = el(
       'div.chat-input-note',
-      'Only persona holders can chat in this room'
+      'Only persona holders can chat in this room',
     );
 
     const inputBar = el('div.chat-input-bar', inputInner, note);
 
     mobileMain.append(mobileHeader, messagesEl, inputBar);
 
-    const content = el(
-      'ion-content',
-      { fullscreen: true },
-      mobileMain
-    );
+    const content = el('ion-content', { fullscreen: true }, mobileMain);
 
     modal.append(header, content);
 

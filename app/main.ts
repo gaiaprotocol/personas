@@ -24,22 +24,22 @@ import { NotificationsTab } from './tabs/notifications';
 import { PostTab } from './tabs/post';
 import { ProfileTab } from './tabs/profile';
 
-// 🔹 OAuth / 지갑 링크 관련
+// OAuth / wallet link
 import { oauth2Me, OAuth2MeResult, oauthLinkWallet } from './auth/oauth2';
 import { openWalletLinkModal } from './modals/google-link-wallet-modal';
 
-// 🔹 세션 파라미터 관리
+// Session param
 import { sessionManager } from './auth/session-manager';
 
-// 🔹 프로필 타입/매니저
+// Profile types/manager
 import type { Profile } from '../shared/types/profile';
 import { fetchPersonaProfile } from './api/profile';
 import { profileManager } from './services/profile-manager';
 
-// 🔹 포스트 API
+// Post API
 import { fetchPersonaPostWithReplies } from './api/post';
 
-// 🔹 구글 로그아웃
+// Google logout
 import { googleLogout } from './auth/google-login';
 
 // =====================
@@ -48,7 +48,7 @@ import { googleLogout } from './auth/google-login';
 
 const urlParams = new URLSearchParams(window.location.search);
 
-// backend에서 넘겨주는 ?session=... 처리
+// Handle ?session=... from backend
 const sid = urlParams.get('session');
 if (sid) {
   sessionManager.set(sid);
@@ -57,7 +57,7 @@ if (sid) {
 export const isWebView = urlParams.get('source') === 'webview';
 
 // =====================
-//    Ionic 기본 셋업
+//    Ionic setup
 // =====================
 
 setupConfig({ hardwareBackButton: true, experimentalCloseWatcher: true });
@@ -82,7 +82,7 @@ document.body.appendChild(createRainbowKit());
 document.documentElement.classList.remove('app-loading');
 
 // =====================
-//    Navigo 라우터
+//    Navigo router
 // =====================
 
 const router = new Navigo('/', {
@@ -90,11 +90,13 @@ const router = new Navigo('/', {
   linksSelector: 'a[href]',
 });
 
-// 현재 라우터에서 보고 있는 프로필 계정 주소
+// Global references
 let currentProfileRouteId: string | null = null;
+let chatTab: ChatTab | null = null;
+let pendingChatPersonaId: string | null = null;
 
 // =====================
-//   탭 헬퍼
+//   Tab helpers
 // =====================
 
 async function setActiveTab(tabKey: string) {
@@ -117,7 +119,7 @@ function getPathFromTab(tabKey: string): string {
 }
 
 // =====================
-//   프로필 버튼 아바타 렌더링
+//   Profile button avatar render
 // =====================
 
 function applyProfileAvatar(profile: Profile | null) {
@@ -130,7 +132,7 @@ function applyProfileAvatar(profile: Profile | null) {
   buttons.forEach((btn) => {
     let avatarContainer = btn.querySelector<HTMLElement>('.profile-avatar');
 
-    // 🔹 로그인 안 된 상태면 아바타 제거 + title 제거
+    // Logged out: remove avatar + title
     if (!hasToken || !rawAddr) {
       if (avatarContainer) avatarContainer.remove();
       btn.removeAttribute('title');
@@ -139,7 +141,6 @@ function applyProfileAvatar(profile: Profile | null) {
 
     const addr = getAddress(rawAddr || zeroAddress);
 
-    // 컨테이너 없으면 생성
     if (!avatarContainer) {
       avatarContainer = document.createElement('span');
       avatarContainer.className = 'profile-avatar';
@@ -179,7 +180,7 @@ function applyProfileAvatar(profile: Profile | null) {
 }
 
 // =====================
-//   Shoelace 메뉴 (프로필/로그아웃)
+//   Shoelace menu (profile / logout)
 // =====================
 
 let activeProfileMenu: HTMLElement | null = null;
@@ -273,7 +274,7 @@ function openProfileMenu(anchorBtn: HTMLElement) {
 }
 
 // =====================
-//   구글 로그인 + 자동 지갑 링크
+//   Google login + auto wallet link
 // =====================
 
 async function tryAutoLinkIfNeeded(
@@ -281,7 +282,6 @@ async function tryAutoLinkIfNeeded(
 ): Promise<'ok' | 'to-link' | 'skip'> {
   const walletHasToken = tokenManager.has();
 
-  // 1) 구글 세션이 완전한 경우: 토큰 + 지갑주소 보유 → 바로 주입
   if (meResult?.ok && meResult.wallet_address && meResult.token) {
     tokenManager.set(
       meResult.token,
@@ -290,12 +290,10 @@ async function tryAutoLinkIfNeeded(
     return 'ok';
   }
 
-  // 2) 구글 로그인 O, 지갑 토큰 X → 링크 필요
   if (meResult?.ok && !walletHasToken) {
     return 'to-link';
   }
 
-  // 3) 지갑 토큰 O, 구글 세션 O → 서버에 링크 요청
   if (walletHasToken && meResult?.ok) {
     const authToken = tokenManager.getToken();
     if (!authToken) return 'to-link';
@@ -329,7 +327,6 @@ async function tryAutoLinkIfNeeded(
     }
   }
 
-  // 4) 그 외 케이스
   return 'skip';
 }
 
@@ -353,7 +350,7 @@ async function ensureWalletLinkedOnStartup() {
 }
 
 // =====================
-//   라우트 정의 (SSR 유지 X)
+//   Routes (no SSR)
 // =====================
 
 function setupRoutes() {
@@ -367,7 +364,7 @@ function setupRoutes() {
     setActiveTab('home');
   });
 
-  // 🔹 프로필 뷰 (/profile/:id)
+  // Profile view (/profile/:id)
   router.on('/profile/:id', (match: any) => {
     const { id } = match.data || {};
     if (!id) return;
@@ -380,7 +377,8 @@ function setupRoutes() {
 
     const loadProfileView = async () => {
       try {
-        const { profile, posts, personaFragments } = await fetchPersonaProfile(id);
+        const { profile, posts, personaFragments } =
+          await fetchPersonaProfile(id);
 
         profileContent.innerHTML = '';
         const profileTab = new ProfileTab(
@@ -400,7 +398,7 @@ function setupRoutes() {
     loadProfileView();
   });
 
-  // 🔹 포스트 뷰 (/post/:id)
+  // Post view (/post/:id)
   router.on('/post/:id', (match: any) => {
     const { id } = match.data || {};
     if (!id) return;
@@ -422,14 +420,10 @@ function setupRoutes() {
         const { post, replies } = await fetchPersonaPostWithReplies(postId);
 
         postContent.innerHTML = '';
-        const postTab = new PostTab(
-          post,
-          replies,
-          {
-            navigate: router.navigate.bind(router),
-            getAuthToken: tokenManager.getToken.bind(tokenManager),
-          }
-        );
+        const postTab = new PostTab(post, replies, {
+          navigate: router.navigate.bind(router),
+          getAuthToken: tokenManager.getToken.bind(tokenManager),
+        });
         postContent.appendChild(postTab.el);
       } catch (err) {
         console.error('[route:/post/:id] failed to load', err);
@@ -437,6 +431,21 @@ function setupRoutes() {
           '<div class="error">Failed to load post. Please try again.</div>';
       }
     })();
+  });
+
+  // Chat view by persona address (/chat/:id)
+  router.on('/chat/:id', (match: any) => {
+    const { id } = match.data || {};
+    if (!id) return;
+
+    setActiveTab('chat');
+
+    if (chatTab) {
+      chatTab.openPersonaRoom(id);
+    } else {
+      // ChatTab is not mounted yet; remember it
+      pendingChatPersonaId = id;
+    }
   });
 
   router.notFound(() => {
@@ -447,22 +456,21 @@ function setupRoutes() {
 }
 
 // =====================
-//  초기 DOM 세팅
+//  Initial DOM setup
 // =====================
 
 document.addEventListener('DOMContentLoaded', () => {
   (async () => {
-    // 1) 지갑 자동 링크 / 링크 모달
+    // Wallet linking / Google session
     await ensureWalletLinkedOnStartup().catch(console.error);
 
-    // 2) 프로필 로드 + 아바타 적용
+    // Profile load + avatar
     await profileManager.init();
     applyProfileAvatar(profileManager.profile);
 
     profileManager.on('change', (newProfile) => {
       applyProfileAvatar(newProfile);
 
-      // ✅ 내 프로필 페이지 보고 있을 때라면 프로필 탭도 즉시 갱신
       const myAddr = tokenManager.getAddress?.();
       if (!newProfile || !myAddr) return;
 
@@ -500,7 +508,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // 🔹 tokenManager 이벤트 기반 아바타 갱신
     (tokenManager as any).on?.('signedIn', async () => {
       await profileManager.init();
       applyProfileAvatar(profileManager.profile);
@@ -512,10 +519,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const navigate = (path: string) => router.navigate(path);
 
-    // 3) 라우터 및 나머지 UI 초기화
+    // Routes and navigation wiring
     setupRoutes();
 
-    // 프로필 버튼 클릭: 로그인 여부에 따라 분기
+    // Profile button click: login or menu
     const profileBtns = document.querySelectorAll<HTMLElement>('#open-profile');
     profileBtns.forEach((profileBtn) => {
       profileBtn.addEventListener('click', (e) => {
@@ -564,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // 앱 전체 설정 모달
+    // App-wide settings modal
     let currentSettings: AppSettings = {
       darkMode: true,
       pushEnabled: true,
@@ -600,7 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Trending Persona 카드 → /profile/:id
+    // Trending persona cards → /profile/:id
     const personaCards = document.querySelectorAll('[data-profile-id]');
     personaCards.forEach((card) => {
       card.addEventListener('click', (e) => {
@@ -612,7 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Edit Profile 버튼 → 프로필 수정 모달
+    // Edit profile → edit modal
     document.body.addEventListener('click', async (event) => {
       const target = (event.target as HTMLElement).closest(
         '[data-action="edit-profile"]',
@@ -637,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await (modal as any).present();
     });
 
-    // 탭 콘텐츠 mount
+    // Mount tab contents
     const exploreContent = document.getElementById('explore-tab-content');
     if (exploreContent) {
       const exploreTab = new ExploreTab(navigate);
@@ -656,8 +663,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const chatContent = document.getElementById('chat-tab-content');
     if (chatContent) {
-      const chatTab = new ChatTab(navigate);
+      chatTab = new ChatTab(navigate);
       chatContent.appendChild(chatTab.el);
+
+      // If there was a pending /chat/:id deep link before ChatTab mounted
+      if (pendingChatPersonaId) {
+        chatTab.openPersonaRoom(pendingChatPersonaId);
+        pendingChatPersonaId = null;
+      }
     }
 
     const notificationsContent = document.getElementById(

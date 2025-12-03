@@ -49,3 +49,10 @@ export function rowToPersonaFragments(
     lastUpdatedAt: row.last_updated_at,
   };
 }
+
+export type PersonaFragmentHolding = PersonaFragments & {
+  balance: string;
+  lastTradePrice: string | null;
+  lastTradeIsBuy: 0 | 1 | null;
+  holderUpdatedAt: number;
+};

@@ -4617,6 +4617,23 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   --padding-end: 4px;
 }
 
+/*!******************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[1]!./app/modals/profile.css ***!
+  \******************************************************************************************************/
+.user-profile-modal .user-profile-modal-body {
+  /* 모달 안에서 조금 여백만 조정하고 싶을 때 */
+  padding-top: 0;
+}
+
+.user-profile-modal ion-content {
+  --background: #000;
+}
+
+/* 필요하면 헤더도 다크 스타일로 */
+.user-profile-modal ion-toolbar {
+  --background: #000;
+  --color: #fff;
+}
 /*!*************************************************************************************************!*\
   !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[1]!./app/tabs/chat.css ***!
   \*************************************************************************************************/
@@ -4952,23 +4969,6 @@ ion-modal.chat-room-modal {
 
 .chat-room-modal ion-button[slot="start"] {
   margin-left: 8px;
-}
-/*!******************************************************************************************************!*\
-  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[1]!./app/modals/profile.css ***!
-  \******************************************************************************************************/
-.user-profile-modal .user-profile-modal-body {
-  /* 모달 안에서 조금 여백만 조정하고 싶을 때 */
-  padding-top: 0;
-}
-
-.user-profile-modal ion-content {
-  --background: #000;
-}
-
-/* 필요하면 헤더도 다크 스타일로 */
-.user-profile-modal ion-toolbar {
-  --background: #000;
-  --color: #fff;
 }
 /*!****************************************************************************************************!*\
   !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[1]!./app/tabs/explore.css ***!
