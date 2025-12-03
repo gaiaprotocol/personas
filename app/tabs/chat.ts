@@ -8,10 +8,17 @@ import {
   sendPersonaChatMessage,
 } from '../api/chat';
 import { fetchHeldPersonaFragments } from '../api/persona-fragments';
+import { showErrorAlert } from '../components/alert';
 import { openLoginModal } from '../modals/login';
 import { createUserProfileModal } from '../modals/profile';
 import './chat.css';
-import { showErrorAlert } from '../components/alert';
+
+// 🔹 contract-based holder check
+import { getAddress } from 'viem';
+import {
+  getPersonaBalance,
+  type Address,
+} from '../contracts/persona-fragments';
 
 type Sender = 'you' | 'other';
 
@@ -101,17 +108,79 @@ export class ChatTab {
   /**
    * Public helper: open chat room for a specific persona address.
    * Used by router for /chat/:personaAddress deep link.
+   *
+   * Now uses on-chain balance() to check access.
    */
   public async openPersonaRoom(personaAddress: string) {
+    // Ensure base thread list (from backend) is loaded
     await this.ensureThreadsInitialized();
 
-    const target = this.threads.find(
-      (t) => t.personaAddress.toLowerCase() === personaAddress.toLowerCase(),
+    const token = tokenManager.getToken?.();
+    const rawUserAddr = tokenManager.getAddress?.();
+
+    if (!token || !rawUserAddr) {
+      // Not logged in → open login modal
+      openLoginModal();
+      return;
+    }
+
+    let persona: Address;
+    let user: Address;
+
+    try {
+      // Normalize to checksum addresses
+      persona = getAddress(personaAddress) as Address;
+      user = getAddress(rawUserAddr) as Address;
+    } catch {
+      showErrorAlert(
+        'Invalid address',
+        'Persona address is not a valid EVM address.',
+      );
+      return;
+    }
+
+    // On-chain holder check using contract read helper
+    try {
+      const balance = await getPersonaBalance(persona, user);
+      if (balance <= 0n) {
+        showErrorAlert(
+          'Chat not available',
+          'You do not hold this persona, so the chat room is not available.',
+        );
+        return;
+      }
+    } catch (err) {
+      console.error('[chat] getPersonaBalance failed', err);
+      showErrorAlert(
+        'Chat error',
+        'Failed to verify persona holdings from contract. Please try again.',
+      );
+      return;
+    }
+
+    // Find existing thread (from backend holdings list)
+    let target = this.threads.find(
+      (t) => t.personaAddress.toLowerCase() === persona.toLowerCase(),
     );
 
+    // If not present (e.g. backend index is stale), create a minimal thread
     if (!target) {
-      showErrorAlert('Chat not available', 'You do not hold this persona or chat is not available.');
-      return;
+      const avatarInitial = persona.slice(2, 3).toUpperCase();
+
+      target = {
+        id: persona,
+        personaAddress: persona,
+        name: this.shortenAddress(persona),
+        holdersInChat: 0, // unknown here, could be fetched later if needed
+        unreadCount: 0,
+        avatarInitial,
+        messages: [],
+      };
+
+      // Prepend to thread lists
+      this.threads.unshift(target);
+      this.filteredThreads = [...this.threads];
+      this.renderThreadList();
     }
 
     await this.activateThread(target);
@@ -134,6 +203,8 @@ export class ChatTab {
 
   /**
    * Load persona holdings and build chat thread list.
+   * Source of truth for the sidebar list is still backend index,
+   * but access is enforced via contract.
    */
   private async initThreads() {
     const token = tokenManager.getToken?.();
@@ -486,7 +557,7 @@ export class ChatTab {
       }
     } catch (err: any) {
       console.error('[chat] send failed', err);
-      alert(err?.message ?? 'Failed to send message');
+      showErrorAlert('Failed to send', err?.message ?? 'Failed to send message');
     }
   }
 
