@@ -734,14 +734,20 @@ export class ChatTab {
   private openMobileChatModal(thread: ChatThread) {
     const modal = el('ion-modal.chat-room-modal') as any;
 
-    const backBtn = el(
+    const backIcon = el('ion-icon', { name: 'chevron-back-outline', slot: 'icon-only' });
+
+    const backInnerButton = el(
       'ion-button',
-      {
-        slot: 'start',
-        fill: 'clear',
-        onclick: () => modal.dismiss(),
-      },
-      el('ion-icon', { name: 'chevron-back-outline' }),
+      { fill: 'clear' },
+      backIcon,
+    ) as HTMLElement;
+
+    backInnerButton.addEventListener('click', () => modal.dismiss());
+
+    const backBtn = el(
+      'ion-buttons',
+      { slot: 'start' },
+      backInnerButton,
     );
 
     const header = el(
@@ -780,21 +786,20 @@ export class ChatTab {
     const messagesEl = el('div.chat-messages');
     this.renderMessagesInto(thread, messagesEl);
 
-    const input = el('ion-input', {
+    // ion-input 대신 그냥 native input
+    const input = el('input', {
+      type: 'text',
       placeholder: 'Type a message...',
       class: 'chat-input-field',
       'aria-label': 'Message',
-    }) as any;
+    }) as HTMLInputElement;
 
     const sendFromModal = async () => {
-      const raw = (await input.getInputElement?.()) as
-        | HTMLInputElement
-        | undefined;
-      const value = (raw?.value ?? '').trim();
+      const value = input.value.trim();
       if (!value) return;
 
       await this.sendMessageCommon(thread, value);
-      if (raw) raw.value = '';
+      input.value = '';
 
       this.renderMessagesInto(thread, messagesEl);
     };
@@ -829,6 +834,10 @@ export class ChatTab {
 
     document.body.appendChild(modal);
     modal.present();
+
+    modal.addEventListener('ionModalDidPresent', () => {
+      this.renderMessagesInto(thread, messagesEl);
+    });
 
     modal.addEventListener('ionModalDidDismiss', () => {
       modal.remove();

@@ -1,4 +1,4 @@
-import { PersonaFragmentHolding } from '../../shared/types/persona-fragments';
+import { PersonaFragmentHolding, TrendingPersonaFragmentsResponse } from '../../shared/types/persona-fragments';
 
 declare const GAIA_API_BASE_URI: string;
 
@@ -31,4 +31,24 @@ export async function fetchHeldPersonaFragments(
   }
 
   return (await res.json()) as FetchHeldPersonaFragmentsResult;
+}
+
+export async function fetchTrendingPersonaFragments(
+  limit = 6,
+): Promise<TrendingPersonaFragmentsResponse> {
+  const url = new URL(`${GAIA_API_BASE_URI}/persona/trending-fragments`);
+  url.searchParams.set('limit', String(limit));
+
+  const res = await fetch(url.toString(), {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `Failed to fetch trending persona fragments: ${res.status}`,
+    );
+  }
+
+  return (await res.json()) as TrendingPersonaFragmentsResponse;
 }

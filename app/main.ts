@@ -8,10 +8,9 @@ import { BackButtonEvent, setupConfig } from '@ionic/core';
 import { defineCustomElements } from '@ionic/core/loader';
 import '@shoelace-style/shoelace';
 import Navigo from 'navigo';
-import { getAddress, zeroAddress } from 'viem';
+import { formatEther, getAddress, zeroAddress } from 'viem';
 
 import { tabConfig } from '../shared/tab-config';
-import { getProtocolFeeRate } from './contracts/persona-fragments';
 import './main.css';
 
 import { createEditProfileModal } from './modals/edit-profile';
@@ -40,6 +39,8 @@ import { profileManager } from './services/profile-manager';
 import { fetchPersonaPostWithReplies } from './api/post';
 
 // Google logout
+import { TrendingPersonaFragment } from '../shared/types/persona-fragments';
+import { fetchTrendingPersonaFragments } from './api/persona-fragments';
 import { googleLogout } from './auth/google-login';
 
 // =====================
@@ -458,6 +459,106 @@ function setupRoutes() {
   router.resolve();
 }
 
+function shortenEthAddress(addr: string): string {
+  if (!addr.startsWith('0x') || addr.length <= 10) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+function renderHomeTrendingCards(
+  personas: TrendingPersonaFragment[],
+  navigate: (path: string) => void,
+) {
+  const grid = document.querySelector<HTMLElement>('#home-trending-grid');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  if (!personas.length) {
+    grid.innerHTML =
+      '<div style="padding:0.75rem; font-size:0.85rem; color:#888;">No persona fragments yet.</div>';
+    return;
+  }
+
+  personas.forEach((p) => {
+    const card = document.createElement('div');
+    card.className = 'home-trending-card';
+    card.setAttribute('data-profile-id', p.personaAddress);
+
+    const priceEth = (() => {
+      try {
+        return `${Number(formatEther(BigInt(p.lastPrice))).toFixed(4)} ETH`;
+      } catch {
+        return '-';
+      }
+    })();
+
+    const avatarInitial = (p.name || '').trim().charAt(0).toUpperCase() || 'P';
+
+    card.innerHTML = `
+      <div class="home-card-header">
+        <div class="home-card-avatar">${avatarInitial}</div>
+        <div class="home-card-meta">
+          <div class="home-card-name">${p.name}</div>
+          <div class="home-card-address">${shortenEthAddress(p.personaAddress)}</div>
+        </div>
+      </div>
+
+      <div class="home-card-price-label">Price</div>
+      <div class="home-card-price-value">${priceEth}</div>
+
+      <div class="home-card-stats-row">
+        <div>
+          <div class="home-card-stat-label">24h Change</div>
+          <div class="home-card-stat-value home-card-change-up">—</div>
+        </div>
+        <div>
+          <div class="home-card-stat-label">Holders</div>
+          <div class="home-card-stat-value">${p.holderCount}</div>
+        </div>
+      </div>
+
+      <div class="home-card-divider"></div>
+
+      <div>
+        <div class="home-card-volume-label">24h Volume</div>
+        <div class="home-card-volume-value">—</div>
+      </div>
+
+      <button class="home-card-button" type="button">Open Persona</button>
+    `;
+
+    card.addEventListener('click', (e) => {
+      e.preventDefault();
+      navigate(`/profile/${p.personaAddress}`);
+    });
+
+    const button = card.querySelector<HTMLButtonElement>('.home-card-button');
+    if (button) {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        navigate(`/profile/${p.personaAddress}`);
+      });
+    }
+
+    grid.appendChild(card);
+  });
+}
+
+async function initHomeTrending(navigate: (path: string) => void) {
+  const grid = document.querySelector<HTMLElement>('#home-trending-grid');
+  if (!grid) return;
+
+  try {
+    const { personas } = await fetchTrendingPersonaFragments(6);
+    renderHomeTrendingCards(personas, navigate);
+  } catch (err) {
+    console.error('[home] failed to load trending personas', err);
+    grid.innerHTML =
+      '<div style="padding:0.75rem; font-size:0.85rem; color:#f97373;">Failed to load trending personas.</div>';
+  }
+}
+
 // =====================
 //  Initial DOM setup
 // =====================
@@ -684,6 +785,6 @@ document.addEventListener('DOMContentLoaded', () => {
       notificationsContent.appendChild(notificationsTab.el);
     }
 
-    console.log(await getProtocolFeeRate());
+    await initHomeTrending(navigate);
   })();
 });
