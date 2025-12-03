@@ -12,7 +12,11 @@ export default {
       return new Response(env.ENV_TYPE);
     }
 
-    if (pathname.startsWith("/profile/svg/") || pathname.startsWith("/post/svg/")) {
+    if (
+      pathname.startsWith("/profile/svg/") ||
+      pathname.startsWith("/post/svg/") ||
+      pathname.startsWith("/chat/svg/")
+    ) {
       const segments = pathname.split("/");
       const rest = segments.slice(3).join("/");
       const targetUrl = new URL(`/svg/${rest}`, request.url);

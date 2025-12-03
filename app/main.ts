@@ -123,53 +123,56 @@ function getPathFromTab(tabKey: string): string {
 // =====================
 
 function applyProfileAvatar(profile: Profile | null) {
-  const buttons = document.querySelectorAll<HTMLElement>('#open-profile');
+  const buttons = document.querySelectorAll<HTMLElement>("#open-profile");
   if (!buttons.length) return;
 
   const hasToken = tokenManager.has();
   const rawAddr = hasToken ? tokenManager.getAddress() : undefined;
 
   buttons.forEach((btn) => {
-    let avatarContainer = btn.querySelector<HTMLElement>('.profile-avatar');
+    // 매번 버튼 내용을 초기화 (중복 아이콘 방지)
+    btn.innerHTML = "";
 
-    // Logged out: remove avatar + title
+    // 로그인 안 된 상태 → 기본 아이콘만 보여주기
     if (!hasToken || !rawAddr) {
-      if (avatarContainer) avatarContainer.remove();
-      btn.removeAttribute('title');
+      const icon = document.createElement("ion-icon");
+      icon.setAttribute("slot", "icon-only");
+      icon.setAttribute("name", "person-circle");
+      btn.appendChild(icon);
+
+      btn.removeAttribute("title");
       return;
     }
 
+    // 로그인된 상태 → 아바타 렌더링
     const addr = getAddress(rawAddr || zeroAddress);
 
-    if (!avatarContainer) {
-      avatarContainer = document.createElement('span');
-      avatarContainer.className = 'profile-avatar';
-      avatarContainer.style.display = 'inline-flex';
-      avatarContainer.style.alignItems = 'center';
-      avatarContainer.style.justifyContent = 'center';
-      avatarContainer.style.width = '28px';
-      avatarContainer.style.height = '28px';
-      avatarContainer.style.borderRadius = '999px';
-      avatarContainer.style.overflow = 'hidden';
-      btn.appendChild(avatarContainer);
-    }
-
-    avatarContainer.innerHTML = '';
+    const avatarContainer = document.createElement("span");
+    avatarContainer.className = "profile-avatar";
+    avatarContainer.style.display = "inline-flex";
+    avatarContainer.style.alignItems = "center";
+    avatarContainer.style.justifyContent = "center";
+    avatarContainer.style.width = "28px";
+    avatarContainer.style.height = "28px";
+    avatarContainer.style.borderRadius = "999px";
+    avatarContainer.style.overflow = "hidden";
 
     if (profile?.avatarUrl) {
-      const img = document.createElement('img');
+      const img = document.createElement("img");
       img.src = profile.avatarUrl;
-      img.alt = profile.nickname || 'Profile';
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.objectFit = 'cover';
+      img.alt = profile.nickname || "Profile";
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "cover";
       avatarContainer.appendChild(img);
     } else {
       const jazz = createJazzicon(addr);
-      (jazz as HTMLElement).style.width = '100%';
-      (jazz as HTMLElement).style.height = '100%';
+      (jazz as HTMLElement).style.width = "100%";
+      (jazz as HTMLElement).style.height = "100%";
       avatarContainer.appendChild(jazz as HTMLElement);
     }
+
+    btn.appendChild(avatarContainer);
 
     if (profile?.nickname) {
       btn.title = profile.nickname;

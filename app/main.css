@@ -97,8 +97,16 @@ ion-modal.fullscreen {
   --docs-shadow-x-large: 0 4px 16px rgb(0 0 0 / 48%);
 }
 
-html {
+/* 🔹 전체 앱 높이 100%로 강제 */
+html,
+body,
+ion-app,
+ion-router-outlet,
+ion-content {
   height: 100%;
+}
+
+html {
   box-sizing: border-box;
   line-height: var(--sl-line-height-normal);
   padding: 0;
@@ -121,7 +129,6 @@ html {
 }
 
 body {
-  height: 100%;
   font: 16px var(--sl-font-sans);
   font-weight: var(--sl-font-weight-normal);
   background-color: var(--docs-background-color);
@@ -136,14 +143,23 @@ body {
 
 ion-app {
   --ion-toolbar-color: var(--sl-color-neutral-900);
+}
 
-  ion-content.content {
-    --color: var(--sl-color-neutral-900);
-  }
+ion-app ion-content.content {
+  --color: var(--sl-color-neutral-900);
 }
 
 ion-modal ion-content {
   --color: var(--sl-color-neutral-900);
+}
+
+/* 🔹 chat 탭 컨테이너도 전체 높이 */
+#chat-tab-content {
+  height: 100%;
+}
+
+#chat-tab-content>section.chat-wrapper {
+  height: 100%;
 }
 
 @media (max-width: 768px) {
@@ -151,6 +167,8 @@ ion-modal ion-content {
     display: none;
   }
 }
+
+/* ===== 홈 / 기타 ===== */
 
 :root {
   --home-bg: #000;
@@ -422,4 +440,15 @@ ion-modal ion-content {
 
 .home-cta-button:hover {
   background: #ffdf59;
+}
+
+/* 프로필 버튼 안에 들어가는 아바타 기본 스타일 */
+.profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  overflow: hidden;
 }

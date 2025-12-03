@@ -1,5 +1,5 @@
 import { el } from '@webtaku/el';
-import { formatEther } from 'viem';
+import { formatEther, getAddress } from 'viem';
 
 import { tokenManager } from '@gaiaprotocol/client-common';
 import { PersonaFragments } from '../../shared/types/persona-fragments';
@@ -152,9 +152,10 @@ export class ProfileTab {
   }
 
   /**
-   * 현재 로그인한 trader 의 페르소나 조각 보유 여부에 따라
-   * - 보유 중이면: 보유 개수 + 채팅방 입장 버튼 (정성스럽게)
-   * - 보유 중이 아니면: UI 숨김
+   * 현재 로그인한 trader 의 페르소나 조각 보유 여부/owner 여부에 따라
+   * - balance > 0: "You hold X fragments"
+   * - balance === 0 && creator: "You are the creator"
+   * - 둘 다 아니면: UI 숨김
    */
   private async loadUserHoldingOrChatCTA(profile: Profile) {
     const ctaRoot = this.el.querySelector<HTMLElement>(
@@ -178,17 +179,29 @@ export class ProfileTab {
         return;
       }
 
+      // 주소 normalize (checksum)
+      const normalizedPersona = getAddress(
+        personaAddress as `0x${string}`,
+      ) as Address;
+      const normalizedTrader = getAddress(
+        traderAddress as `0x${string}`,
+      ) as Address;
+
       const { getPersonaBalance } = await import(
         '../contracts/persona-fragments'
       );
 
       const balance = await getPersonaBalance(
-        personaAddress,
-        traderAddress as Address,
+        normalizedPersona,
+        normalizedTrader,
       );
 
-      // 보유량 0 이하면 아무 것도 안 보여줌
-      if (balance <= 0n) {
+      const isOwner =
+        normalizedPersona.toLowerCase() === normalizedTrader.toLowerCase();
+      const hasBalance = balance > 0n;
+
+      // owner 가 아니고, balance 가 0이면 숨김
+      if (!isOwner && !hasBalance) {
         ctaRoot.remove();
         return;
       }
@@ -203,17 +216,33 @@ export class ProfileTab {
 
       const balanceText = formatBigInt(balance);
 
-      // 정성스럽게 꾸민 HTML 주입
+      // pill 내용 분기
+      let pillHTML: string;
+
+      if (hasBalance) {
+        // 갖고 있는 개수가 있으면 → count 기준 (creator 여부와 무관)
+        pillHTML = `
+          You hold
+          <span class="profile-user-cta-count">${balanceText}</span>
+          fragments
+        `;
+      } else {
+        // 개수는 없고, creator인 경우
+        pillHTML = `You are the creator`;
+      }
+
+      const subText = hasBalance
+        ? `As a fragment holder${isOwner ? ' (and creator)' : ''}, you can join this persona&apos;s private chat room.`
+        : `As the creator, you can join this persona&apos;s private chat room.`;
+
       ctaRoot.innerHTML = `
         <div class="profile-user-cta">
           <div class="profile-user-cta-left">
             <div class="profile-user-cta-pill">
-              You hold
-              <span class="profile-user-cta-count">${balanceText}</span>
-              fragments
+              ${pillHTML}
             </div>
             <div class="profile-user-cta-subtext">
-              As a fragment holder, you can join this persona&apos;s private chat room.
+              ${subText}
             </div>
           </div>
           <button type="button" class="profile-chat-btn" data-action="enter-chat-room">
@@ -229,9 +258,9 @@ export class ProfileTab {
       if (button) {
         button.addEventListener('click', () => {
           if (this.navigate) {
-            this.navigate(`/chat/${personaAddress}`);
+            this.navigate(`/chat/${normalizedPersona}`);
           } else {
-            window.location.href = `/chat/${personaAddress}`;
+            window.location.href = `/chat/${normalizedPersona}`;
           }
         });
       }

@@ -109,7 +109,7 @@ export class ChatTab {
    * Public helper: open chat room for a specific persona address.
    * Used by router for /chat/:personaAddress deep link.
    *
-   * Now uses on-chain balance() to check access.
+   * 이제 owner 인 경우 balance 0 이어도 입장 허용.
    */
   public async openPersonaRoom(personaAddress: string) {
     // Ensure base thread list (from backend) is loaded
@@ -142,7 +142,10 @@ export class ChatTab {
     // On-chain holder check using contract read helper
     try {
       const balance = await getPersonaBalance(persona, user);
-      if (balance <= 0n) {
+      const isOwner =
+        persona.toLowerCase() === user.toLowerCase();
+
+      if (!isOwner && balance <= 0n) {
         showErrorAlert(
           'Chat not available',
           'You do not hold this persona, so the chat room is not available.',
@@ -203,8 +206,8 @@ export class ChatTab {
 
   /**
    * Load persona holdings and build chat thread list.
-   * Source of truth for the sidebar list is still backend index,
-   * but access is enforced via contract.
+   * - 백엔드 holdings 기반으로 기본 목록 구성
+   * - 여기에 "내 지갑 주소"를 페르소나로 하는 방을 강제로 하나 추가 (없으면)
    */
   private async initThreads() {
     const token = tokenManager.getToken?.();
@@ -232,6 +235,35 @@ export class ChatTab {
           messages: [],
         };
       });
+
+      // === 내 페르소나(내 주소) 강제 추가 ===
+      const myAddr = tokenManager.getAddress?.();
+      if (myAddr && myAddr.startsWith('0x')) {
+        const normalizedMy = getAddress(myAddr) as Address;
+
+        const exists = this.threads.some(
+          (t) =>
+            t.personaAddress.toLowerCase() === normalizedMy.toLowerCase(),
+        );
+
+        if (!exists) {
+          const name = this.shortenAddress(normalizedMy);
+          const avatarInitial = normalizedMy.slice(2, 3).toUpperCase();
+
+          const myThread: ChatThread = {
+            id: normalizedMy,
+            personaAddress: normalizedMy,
+            name,
+            holdersInChat: 0,
+            unreadCount: 0,
+            avatarInitial,
+            messages: [],
+          };
+
+          // 내 방을 가장 위에 배치
+          this.threads.unshift(myThread);
+        }
+      }
 
       this.filteredThreads = [...this.threads];
       this.currentThread = this.threads[0] ?? null;
@@ -527,9 +559,7 @@ export class ChatTab {
         token,
       });
 
-      // 기본 전략:
-      //  - WS가 정상적으로 연결되어 있으면, 서버 브로드캐스트를 통해서만 메시지를 추가한다.
-      //  - WS가 없거나 닫혀 있으면, 여기서 직접 추가(fallback).
+      // WS가 정상적으로 연결되어 있으면, 서버 브로드캐스트를 통해서만 메시지를 추가.
       const wsOpen =
         this.ws &&
         this.wsPersona &&

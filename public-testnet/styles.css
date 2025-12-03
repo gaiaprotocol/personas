@@ -3695,8 +3695,16 @@ ion-modal.fullscreen {
   --docs-shadow-x-large: 0 4px 16px rgb(0 0 0 / 48%);
 }
 
-html {
+/* 🔹 전체 앱 높이 100%로 강제 */
+html,
+body,
+ion-app,
+ion-router-outlet,
+ion-content {
   height: 100%;
+}
+
+html {
   box-sizing: border-box;
   line-height: var(--sl-line-height-normal);
   padding: 0;
@@ -3719,7 +3727,6 @@ html {
 }
 
 body {
-  height: 100%;
   font: 16px var(--sl-font-sans);
   font-weight: var(--sl-font-weight-normal);
   background-color: var(--docs-background-color);
@@ -3734,14 +3741,23 @@ body {
 
 ion-app {
   --ion-toolbar-color: var(--sl-color-neutral-900);
+}
 
-  ion-content.content {
-    --color: var(--sl-color-neutral-900);
-  }
+ion-app ion-content.content {
+  --color: var(--sl-color-neutral-900);
 }
 
 ion-modal ion-content {
   --color: var(--sl-color-neutral-900);
+}
+
+/* 🔹 chat 탭 컨테이너도 전체 높이 */
+#chat-tab-content {
+  height: 100%;
+}
+
+#chat-tab-content>section.chat-wrapper {
+  height: 100%;
 }
 
 @media (max-width: 768px) {
@@ -3749,6 +3765,8 @@ ion-modal ion-content {
     display: none;
   }
 }
+
+/* ===== 홈 / 기타 ===== */
 
 :root {
   --home-bg: #000;
@@ -4022,6 +4040,16 @@ ion-modal ion-content {
   background: #ffdf59;
 }
 
+/* 프로필 버튼 안에 들어가는 아바타 기본 스타일 */
+.profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  overflow: hidden;
+}
 /* ===== 모달 공통 ===== */
 
 ion-modal.edit-profile-modal {
@@ -4608,19 +4636,30 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
 .chat-wrapper {
   background: var(--bg-page);
   color: var(--text-primary);
-  min-height: 100vh;
-  padding: 1.5rem;
+
+  /* 전체 화면에 꽉 차도록 */
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   box-sizing: border-box;
+
+  display: flex;
+  justify-content: center;
 }
 
 /* 메인 쉘 (좌: 리스트 / 우: 채팅) */
 .chat-shell {
-  max-width: 1200px;
-  margin: 0 auto;
-  height: calc(100vh - 3rem);
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+
+  height: 100%;
+  min-height: 0;
+
   display: flex;
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   background: #050505;
 }
@@ -4750,6 +4789,8 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
 /* 데스크톱에서만 보이는 패널 */
 .chat-main-desktop {
   display: flex;
+  flex: 1;
+  min-width: 0;
 }
 
 /* 헤더 */
@@ -4790,6 +4831,7 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-height: 0;
 }
 
 /* 메시지 행 */
@@ -4891,12 +4933,21 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
 
 @media (max-width: 900px) {
   .chat-shell {
-    height: auto;
+    flex-direction: column;
     max-width: 100%;
     border-radius: 0;
   }
 
-  /* 데스크톱용 메인 패널은 모바일에서 숨김 */
+  /* 🔥 모바일/태블릿에서는 목록이 전체 가로폭 차지 */
+  .chat-sidebar {
+    width: 100%;
+    min-width: 0;
+    flex: 1;
+    border-right: none;
+    border-bottom: 1px solid #181818;
+  }
+
+  /* 데스크톱용 메인 패널 숨김 */
   .chat-main-desktop {
     display: none;
   }
@@ -4922,7 +4973,7 @@ ion-modal.chat-room-modal {
   text-align: center;
 }
 
-.chat-room-modal ion-button[slot="start"] {
+.chat-room-modal ion-button[slot='start'] {
   margin-left: 8px;
 }
 :root {
