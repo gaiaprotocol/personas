@@ -13,7 +13,7 @@ import { openLoginModal } from '../modals/login';
 import { createUserProfileModal } from '../modals/profile';
 import './chat.css';
 
-// 🔹 contract-based holder check
+// contract-based holder check
 import { getAddress } from 'viem';
 import {
   getPersonaBalance,
@@ -527,34 +527,52 @@ export class ChatTab {
         token,
       });
 
-      const myAddr = tokenManager.getAddress?.();
-      const senderType: Sender =
-        myAddr && msg.sender.toLowerCase() === myAddr.toLowerCase()
-          ? 'you'
-          : 'other';
+      // 기본 전략:
+      //  - WS가 정상적으로 연결되어 있으면, 서버 브로드캐스트를 통해서만 메시지를 추가한다.
+      //  - WS가 없거나 닫혀 있으면, 여기서 직접 추가(fallback).
+      const wsOpen =
+        this.ws &&
+        this.wsPersona &&
+        this.wsPersona.toLowerCase() === thread.personaAddress.toLowerCase() &&
+        this.ws.readyState === WebSocket.OPEN;
 
-      const author =
-        senderType === 'you' ? 'You' : this.shortenAddress(msg.sender);
+      if (!wsOpen) {
+        // fallback: 서버 응답을 바로 반영
+        const myAddr = tokenManager.getAddress?.();
+        const senderType: Sender =
+          myAddr && msg.sender.toLowerCase() === myAddr.toLowerCase()
+            ? 'you'
+            : 'other';
 
-      const time = new Date(msg.createdAt * 1000).toLocaleTimeString([], {
-        hour: 'numeric',
-        minute: '2-digit',
-      });
+        const author =
+          senderType === 'you' ? 'You' : this.shortenAddress(msg.sender);
 
-      const view: ViewChatMessage = {
-        id: msg.id,
-        sender: senderType,
-        author,
-        text: msg.content,
-        time,
-        raw: msg,
-      };
+        const time = new Date(msg.createdAt * 1000).toLocaleTimeString([], {
+          hour: 'numeric',
+          minute: '2-digit',
+        });
 
-      thread.messages.push(view);
+        const view: ViewChatMessage = {
+          id: msg.id,
+          sender: senderType,
+          author,
+          text: msg.content,
+          time,
+          raw: msg,
+        };
 
-      if (this.currentThread && this.currentThread.id === thread.id) {
-        this.renderCurrentThread();
+        // 이미 들어가 있다면 중복 방지
+        if (!thread.messages.some((m) => Number(m.id) === Number(msg.id))) {
+          thread.messages.push(view);
+        }
+
+        if (this.currentThread && this.currentThread.id === thread.id) {
+          this.renderCurrentThread();
+        }
       }
+
+      // WS가 열려 있는 경우엔 아무 것도 하지 않는다.
+      // 메시지는 handleIncomingMessage 를 통해 한 번만 추가된다.
     } catch (err: any) {
       console.error('[chat] send failed', err);
       showErrorAlert('Failed to send', err?.message ?? 'Failed to send message');
@@ -664,7 +682,10 @@ export class ChatTab {
       raw: msg,
     };
 
-    if (thread.messages.some((m) => m.id === msg.id)) return;
+    // 숫자/문자열 섞여도 잘 동작하도록 방어
+    if (thread.messages.some((m) => Number(m.id) === Number(msg.id))) {
+      return;
+    }
 
     thread.messages.push(view);
 
