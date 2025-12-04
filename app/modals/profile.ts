@@ -11,6 +11,7 @@ import { formatEther, getAddress } from 'viem';
 import { TradePanel } from '../components/trade-panel';
 import { Address } from '../contracts/persona-fragments';
 import { profileManager } from '../services/profile-manager';
+import { createPostModal } from './post'; // ⭐ 포스트 모달 import 추가
 
 /* =========================
  *   헬퍼들
@@ -95,7 +96,7 @@ function applyProfileData(
     avatar.style.backgroundImage = '';
   }
 
-  // 🔽 포스트 리스트는 shared 템플릿(postCard) 스타일을 그대로 사용하므로 수정하지 않는다.
+  // 포스트 리스트는 shared 템플릿(postCard) 스타일을 그대로 사용하므로 수정하지 않는다.
 }
 
 /** 내부 링크를 SPA 라우터로 연결 */
@@ -115,6 +116,33 @@ function setupInternalLinks(
       modal.dismiss();
       navigate(href);
     });
+  });
+}
+
+/** 프로필 모달 안에서 포스트 카드를 눌렀을 때 → 포스트 모달 띄우기 */
+function setupPostModalTriggers(
+  root: HTMLElement,
+  navigate?: (path: string) => void,
+) {
+  root.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+
+    const card = target.closest<HTMLElement>(
+      '[data-hook="post-card"][data-post-id]',
+    );
+    if (!card) return;
+
+    const idStr = card.getAttribute('data-post-id');
+    if (!idStr) return;
+
+    const id = Number(idStr);
+    if (!Number.isFinite(id) || id <= 0) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    createPostModal(id, navigate);
   });
 }
 
@@ -320,9 +348,7 @@ export function createUserProfileModal(
 ) {
   const modal = el('ion-modal.user-profile-modal') as HTMLIonModalElement;
 
-  /* -------------------------
-   *     Header
-   * ------------------------*/
+  /* Header */
 
   const backIcon = el('ion-icon', {
     name: 'chevron-back-outline',
@@ -350,9 +376,7 @@ export function createUserProfileModal(
     el('ion-toolbar', backBtn, titleEl),
   );
 
-  /* -------------------------
-   *   Content: 초기에는 로딩
-   * ------------------------*/
+  /* Content: 초기에는 로딩 */
 
   const loadingEl = el(
     'div.profile-loading',
@@ -386,9 +410,8 @@ export function createUserProfileModal(
     if (unsubscribe) unsubscribe();
   });
 
-  /* -------------------------
-   *   비동기 로딩: 완료 후 템플릿 생성
-   * ------------------------*/
+  /* 비동기 로딩 */
+
   (async () => {
     try {
       const { profile, posts, personaFragments } =
@@ -413,6 +436,9 @@ export function createUserProfileModal(
 
       // 내부 링크 처리
       setupInternalLinks(profileRoot, modal, navigate);
+
+      // 포스트 카드 클릭 → 포스트 모달
+      setupPostModalTriggers(profileRoot, navigate);
 
       // DOM 삽입
       content.appendChild(profileRoot);
@@ -439,7 +465,7 @@ export function createUserProfileModal(
         console.error('[user-profile-modal] setup interactive features failed', e);
       }
 
-      // ✅ 내 프로필 모달인 경우, profileManager.change 구독해서 실시간 업데이트
+      // 내 프로필 모달인 경우, profileManager.change 구독해서 실시간 업데이트
       try {
         const myAddr = tokenManager.getAddress?.();
         if (myAddr) {

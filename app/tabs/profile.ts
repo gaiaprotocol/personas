@@ -3,12 +3,20 @@ import { formatEther, getAddress } from 'viem';
 
 import { tokenManager, wagmiConfig } from '@gaiaprotocol/client-common';
 import { watchContractEvent } from 'wagmi/actions';
+
 import { PersonaFragments } from '../../shared/types/persona-fragments';
 import { PersonaPost } from '../../shared/types/post';
 import { Profile } from '../../shared/types/profile';
 import { profile as profileTemplate } from '../../shared/ui/profile';
+
 import { TradePanel } from '../components/trade-panel';
-import { Address, getBuyPrice, getPersonaBalance, getPersonaSupply, personaFragmentsAbi } from '../contracts/persona-fragments';
+import {
+  Address,
+  getBuyPrice,
+  getPersonaBalance,
+  getPersonaSupply,
+  personaFragmentsAbi,
+} from '../contracts/persona-fragments';
 import { PERSONA_FRAGMENTS_ADDRESS } from '../vars';
 
 export class ProfileTab {

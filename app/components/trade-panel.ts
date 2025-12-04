@@ -15,6 +15,12 @@ import {
 } from '../contracts/persona-fragments';
 import './trade-panel.css';
 
+import { openWalletConnectModal, wagmiConfig } from '@gaiaprotocol/client-common';
+import {
+  disconnect,
+  getConnection
+} from 'wagmi/actions';
+
 type TradeMode = 'buy' | 'sell';
 
 type TradePanelOptions = {
@@ -48,6 +54,20 @@ async function getHoldingRewardSafe(params: {
 }): Promise<HoldingRewardData> {
   // 필요하다면 try/catch 후 fallback 으로 rewardRatio=0 처리 가능
   return fetchHoldingReward(params);
+}
+
+// RainbowKit 모달이 열린 뒤, 일정 시간 동안 지갑 연결을 기다리는 유틸
+async function waitForWalletConnection(
+  timeoutMs = 30000,
+  intervalMs = 500,
+): Promise<Address | null> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const { address } = getConnection(wagmiConfig);
+    if (address) return address as Address;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return null;
 }
 
 /**
@@ -300,6 +320,66 @@ export class TradePanel {
   }
 
   /**
+   * 지갑 연결 및 주소 일치 확인
+   * - 1) 로그인한 유저의 주소(getTraderAddress)
+   * - 2) wagmi 의 실제 연결된 지갑 주소(getAccount)
+   * 를 비교
+   * - 연결 안 되어 있으면 RainbowKit 모달(openWalletConnectModal) 열기
+   * - 모달 이후 일정 시간 대기(waitForWalletConnection)
+   * - 주소 다르면 안내 후 disconnect
+   * - 모두 OK면 거래에 사용할 주소 반환
+   */
+  private async ensureWalletAndIdentity(): Promise<Address | null> {
+    const loggedIn =
+      (this.opts.getTraderAddress && this.opts.getTraderAddress()) || null;
+
+    if (!loggedIn) {
+      this.showError('You must be logged in before trading.');
+      return null;
+    }
+
+    // 현재 연결된 계정 확인
+    let account = getConnection(wagmiConfig);
+    let connected: Address | undefined | null = account.address;
+
+    // 아직 연결 안 되어 있으면 → RainbowKit 모달 열기
+    if (!connected) {
+      openWalletConnectModal();
+
+      // 유저가 모달에서 지갑 연결할 때까지 대기
+      connected = await waitForWalletConnection();
+      if (!connected) {
+        this.showError('Wallet connection was not completed.');
+        return null;
+      }
+    }
+
+    if (!connected) {
+      this.showError('Wallet not connected.');
+      return null;
+    }
+
+    // 주소 일치 여부 검사
+    if (connected.toLowerCase() !== loggedIn.toLowerCase()) {
+      // 안내 다이얼로그 + disconnect
+      window.alert(
+        `Connected wallet (${connected}) does not match the logged-in wallet (${loggedIn}).\n` +
+        'The wallet connection will be cleared. Please reconnect with the correct address.',
+      );
+      try {
+        await disconnect(wagmiConfig);
+      } catch (e) {
+        console.error('[TradePanel] failed to disconnect wallet', e);
+      }
+      this.showError('Wallet address mismatch. Please connect with the logged-in wallet.');
+      return null;
+    }
+
+    // 둘 다 같으면 OK
+    return loggedIn as Address;
+  }
+
+  /**
    * amount 입력 시 온체인 가격/수수료 미리보기
    * - holdingReward 는 0 으로 두고 base fee 만 계산
    * - 실제 트랜잭션에서는 별도로 holdingReward 포함 계산
@@ -352,10 +432,10 @@ export class TradePanel {
       return;
     }
 
-    const trader =
-      (this.opts.getTraderAddress && this.opts.getTraderAddress()) || null;
+    // 지갑 연결 + 주소 일치 확인
+    const trader = await this.ensureWalletAndIdentity();
     if (!trader) {
-      this.showError('Wallet not connected or trader address not available.');
+      // ensureWalletAndIdentity 에서 에러 / 안내 처리됨
       return;
     }
 

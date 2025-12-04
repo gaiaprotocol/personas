@@ -275,7 +275,7 @@ export class FeedTab {
         !!currentAccount &&
         item.post.author.toLowerCase() === currentAccount.toLowerCase();
 
-      // 💡 여기서 shared/ui/post.ts 의 postCard 사용
+      // shared/ui/post.ts 의 postCard 사용
       const node = postCard(el as any, {
         post: item.post,
         isMine,
@@ -298,7 +298,7 @@ export class FeedTab {
 
     // Reply 버튼
     const replyBtn = card.querySelector<HTMLButtonElement>(
-      '[data-hook="action-reply"]',
+      '[data-hook="post-reply"]',
     );
     if (replyBtn) {
       replyBtn.addEventListener('click', (ev) => {
@@ -307,9 +307,20 @@ export class FeedTab {
       });
     }
 
+    // Repost 버튼
+    const repostBtn = card.querySelector<HTMLButtonElement>(
+      '[data-hook="post-repost"]',
+    );
+    if (repostBtn) {
+      repostBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        await this.handleRepost(item, repostBtn);
+      });
+    }
+
     // Like 버튼
     const likeBtn = card.querySelector<HTMLButtonElement>(
-      '[data-hook="action-like"]',
+      '[data-hook="post-like"]',
     );
     if (likeBtn) {
       if (item.liked) {
@@ -325,7 +336,7 @@ export class FeedTab {
 
     // More (내 글일 때만 존재)
     const moreBtn = card.querySelector<HTMLButtonElement>(
-      '[data-hook="action-more"]',
+      '[data-hook="post-more"]',
     );
     if (moreBtn) {
       moreBtn.addEventListener('click', async (ev) => {
@@ -335,7 +346,7 @@ export class FeedTab {
     }
   }
 
-  /* ================= 좋아요 / 수정 / 삭제 ================= */
+  /* ================= 좋아요 / 리포스트 / 수정 / 삭제 ================= */
 
   private async handleToggleLike(
     item: FeedItemState,
@@ -364,6 +375,49 @@ export class FeedTab {
     } catch (err: any) {
       console.error(err);
       alert(err?.message ?? 'Failed to update like.');
+    }
+  }
+
+  /** 리포스트: 원문 content를 그대로 복제해서 repostOfId로 새 포스트 생성 */
+  private async handleRepost(
+    item: FeedItemState,
+    repostBtn?: HTMLButtonElement,
+  ) {
+    const token = this.options.getAuthToken();
+    if (!token) {
+      alert('You need to log in to repost.');
+      return;
+    }
+
+    const ok = window.confirm('Repost this post to your feed?');
+    if (!ok) return;
+
+    try {
+      const originalContent = item.post.content ?? '';
+      if (!originalContent.trim()) {
+        alert('This post has no content to repost.');
+        return;
+      }
+
+      await createPersonaPostApi(
+        {
+          content: originalContent,
+          repostOfId: item.post.id,
+        },
+        token,
+      );
+
+      item.post.repostCount = (item.post.repostCount ?? 0) + 1;
+
+      if (repostBtn) {
+        repostBtn.textContent = `⤴ ${item.post.repostCount ?? 0}`;
+      }
+
+      // 필요하다면 여기에서 새 리포스트를 feed 상단에 추가하는 로직도 넣을 수 있음
+      // this.items.unshift({ post: created, liked: false }); this.renderPosts();
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message ?? 'Failed to repost.');
     }
   }
 

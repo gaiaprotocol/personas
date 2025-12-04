@@ -5,7 +5,11 @@ import {
   replyComposer,
   replyList,
 } from '../../shared/ui/post';
-import { createPersonaPostApi, likePersonaPostApi, unlikePersonaPostApi } from '../api/post';
+import {
+  createPersonaPostApi,
+  likePersonaPostApi,
+  unlikePersonaPostApi,
+} from '../api/post';
 
 export class PostTab {
   el: HTMLElement;
@@ -23,7 +27,6 @@ export class PostTab {
       'section.post-wrapper',
       el(
         'div.post-inner',
-        // header 등은 필요하면 별도 shared/ui로
         postDetailMain(el as any, { post }),
         replyComposer(el as any),
         replyList(el as any, replies),
@@ -35,6 +38,7 @@ export class PostTab {
 
     // 3) data-hook 기반으로 이벤트 붙이기 (Controller 역할)
     this.setupMainLike(post, opts.getAuthToken);
+    this.setupMainRepost(post, opts.getAuthToken);
     this.setupReplyComposer(post, opts.getAuthToken);
   }
 
@@ -51,7 +55,10 @@ export class PostTab {
     });
   }
 
-  private setupMainLike(post: PersonaPost, getAuthToken?: () => string | undefined) {
+  private setupMainLike(
+    post: PersonaPost,
+    getAuthToken?: () => string | undefined,
+  ) {
     const likeBtn = this.el.querySelector<HTMLElement>('[data-hook="action-like"]');
     const likeStat = this.el.querySelector<HTMLElement>('[data-hook="stat-likes"]');
     if (!likeBtn || !likeStat) return;
@@ -66,7 +73,6 @@ export class PostTab {
         return;
       }
 
-      // 여기서 likePersonaPostApi / unlikePersonaPostApi 호출
       try {
         if (liked) {
           await unlikePersonaPostApi(post.id, token);
@@ -87,7 +93,52 @@ export class PostTab {
     });
   }
 
-  private setupReplyComposer(post: PersonaPost, getAuthToken?: () => string | undefined) {
+  /** 상세 화면 리포스트 버튼 동작 */
+  private setupMainRepost(
+    post: PersonaPost,
+    getAuthToken?: () => string | undefined,
+  ) {
+    const repostBtn = this.el.querySelector<HTMLElement>('[data-hook="action-repost"]');
+    const repostStat = this.el.querySelector<HTMLElement>('[data-hook="stat-reposts"]');
+    if (!repostBtn || !repostStat) return;
+
+    let repostCount = post.repostCount ?? 0;
+
+    repostBtn.addEventListener('click', async () => {
+      const token = getAuthToken?.();
+      if (!token) {
+        alert('Login required.');
+        return;
+      }
+
+      const ok = window.confirm('Repost this post to your feed?');
+      if (!ok) return;
+
+      try {
+        const originalContent = post.content ?? '';
+        if (!originalContent.trim()) {
+          alert('This post has no content to repost.');
+          return;
+        }
+
+        await createPersonaPostApi(
+          { content: originalContent, repostOfId: post.id },
+          token,
+        );
+
+        repostCount += 1;
+        repostStat.textContent = String(repostCount);
+      } catch (e) {
+        console.error(e);
+        alert('Failed to repost.');
+      }
+    });
+  }
+
+  private setupReplyComposer(
+    post: PersonaPost,
+    getAuthToken?: () => string | undefined,
+  ) {
     const input = this.el.querySelector<HTMLTextAreaElement>('[data-hook="reply-input"]');
     const submit = this.el.querySelector<HTMLButtonElement>('[data-hook="reply-submit"]');
     const list = this.el.querySelector<HTMLElement>('.post-replies-list');
@@ -116,8 +167,9 @@ export class PostTab {
           { content: text, parentPostId: post.id },
           token,
         );
-        // 새 reply DOM 하나 생성 (shared/ui/replyList 와 동일한 형태 써도 되고, 간단히 직접 작성해도 됨)
-        const node = (replyList(el, [created]) as HTMLElement).querySelector('[data-hook="reply-item"]');
+
+        const node = (replyList(el as any, [created]) as HTMLElement)
+          .querySelector('[data-hook="reply-item"]');
         if (node) list.insertBefore(node, list.firstChild);
 
         replyCount += 1;

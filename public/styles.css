@@ -4749,6 +4749,21 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   opacity: 0.7;
   cursor: default;
 }
+.post-modal .post-modal-body {
+  /* 모달 안에서 조금 여백만 조정하고 싶을 때 */
+  padding: 12px;
+}
+
+.post-modal ion-content {
+  --background: #000;
+}
+
+/* 필요하면 헤더도 다크 스타일로 */
+.post-modal ion-toolbar {
+  --background: #000;
+  --color: #fff;
+}
+
 :root {
   --bg-page: #000000;
   --bg-card: #111111;
