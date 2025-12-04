@@ -131,7 +131,7 @@ export function calcSellProceeds(params: {
 
 // 백엔드에서 받는 서명 데이터 타입
 export type HoldingRewardData = {
-  rewardRatio: bigint;        // 1e18 기준 비율
+  rewardRatio: bigint;        // 1e18 기준 비율 (서버 설계에 따라 실제 holdingReward 금액도 받을 수 있음)
   nonce: bigint;
   signature: `0x${string}`;   // verifier signature
 };
@@ -191,3 +191,5 @@ export async function sellPersonaFragments(params: {
 
   return { hash, receipt };
 }
+
+export { abi as personaFragmentsAbi };

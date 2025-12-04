@@ -60,31 +60,15 @@ export function profile(
       const u = new URL(url);
       const host = u.hostname.toLowerCase().replace(/^www\./, '');
 
-      if (host.includes('twitter.com') || host === 'x.com') {
-        return 'logo-twitter';
-      }
-      if (host.includes('discord.com') || host.includes('discord.gg')) {
-        return 'logo-discord';
-      }
-      if (host.includes('github.com')) {
-        return 'logo-github';
-      }
-      if (host === 'youtu.be' || host.includes('youtube.com')) {
-        return 'logo-youtube';
-      }
-      if (
-        host.includes('t.me') ||
-        host.includes('telegram.me') ||
-        host.includes('telegram.org')
-      ) {
+      if (host.includes('twitter.com') || host === 'x.com') return 'logo-twitter';
+      if (host.includes('discord.com') || host.includes('discord.gg')) return 'logo-discord';
+      if (host.includes('github.com')) return 'logo-github';
+      if (host === 'youtu.be' || host.includes('youtube.com')) return 'logo-youtube';
+      if (host.includes('t.me') || host.includes('telegram.me') || host.includes('telegram.org')) {
         return 'paper-plane-outline';
       }
-      if (host.includes('linkedin.com')) {
-        return 'logo-linkedin';
-      }
-      if (host.includes('instagram.com')) {
-        return 'logo-instagram';
-      }
+      if (host.includes('linkedin.com')) return 'logo-linkedin';
+      if (host.includes('instagram.com')) return 'logo-instagram';
 
       return 'link-outline';
     } catch {
@@ -128,7 +112,6 @@ export function profile(
       )
       : null;
 
-  // ===== Hero / main profile card =====
   const editButton = b(
     'button.profile-edit-btn',
     {

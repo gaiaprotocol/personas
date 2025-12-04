@@ -1,17 +1,20 @@
 import { el } from '@webtaku/el';
 import { formatEther, getAddress } from 'viem';
 
-import { tokenManager } from '@gaiaprotocol/client-common';
+import { tokenManager, wagmiConfig } from '@gaiaprotocol/client-common';
+import { watchContractEvent } from 'wagmi/actions';
 import { PersonaFragments } from '../../shared/types/persona-fragments';
 import { PersonaPost } from '../../shared/types/post';
 import { Profile } from '../../shared/types/profile';
 import { profile as profileTemplate } from '../../shared/ui/profile';
 import { TradePanel } from '../components/trade-panel';
-import { Address } from '../contracts/persona-fragments';
+import { Address, getBuyPrice, getPersonaBalance, getPersonaSupply, personaFragmentsAbi } from '../contracts/persona-fragments';
+import { PERSONA_FRAGMENTS_ADDRESS } from '../vars';
 
 export class ProfileTab {
   el: HTMLElement;
   private navigate?: (path: string) => void;
+  private unsubscribeFns: Array<() => void> = [];
 
   constructor(
     profile: Profile,
@@ -41,6 +44,11 @@ export class ProfileTab {
     // 온체인 가격/공급량 갱신 (SSR 값 덮어쓰기)
     this.loadOnchainStats(profile).catch((err) => {
       console.error('[ProfileTab] failed to load on-chain stats', err);
+    });
+
+    // TradeExecuted 이벤트 구독 → 다른 유저의 거래도 실시간 반영
+    this.subscribeTradeEvents(profile).catch((err) => {
+      console.error('[ProfileTab] failed to subscribe trade events', err);
     });
   }
 
@@ -95,6 +103,13 @@ export class ProfileTab {
       getTraderAddress,
       onTraded: () => {
         console.log('[ProfileTab] trade completed for', personaAddress);
+        // 내가 트레이드한 경우 즉시 stats / CTA 갱신
+        this.loadOnchainStats(profile).catch((err) => {
+          console.error('[ProfileTab] loadOnchainStats after trade error', err);
+        });
+        this.loadUserHoldingOrChatCTA(profile).catch((err) => {
+          console.error('[ProfileTab] loadUserHoldingOrChatCTA after trade error', err);
+        });
       },
     });
   }
@@ -111,10 +126,6 @@ export class ProfileTab {
 
       // EVM 주소 형태가 아니면 스킵
       if (!account || !account.startsWith('0x')) return;
-
-      const { getBuyPrice, getPersonaSupply } = await import(
-        '../contracts/persona-fragments'
-      );
 
       const personaAddress = account as Address;
 
@@ -186,10 +197,6 @@ export class ProfileTab {
       const normalizedTrader = getAddress(
         traderAddress as `0x${string}`,
       ) as Address;
-
-      const { getPersonaBalance } = await import(
-        '../contracts/persona-fragments'
-      );
 
       const balance = await getPersonaBalance(
         normalizedPersona,
@@ -268,5 +275,45 @@ export class ProfileTab {
       console.error('[ProfileTab] loadUserHoldingOrChatCTA error', err);
       ctaRoot.remove();
     }
+  }
+
+  /**
+   * TradeExecuted 이벤트 구독
+   * - persona 인덱스로 필터
+   * - 해당 페르소나에 트레이드 발생 시 stats / CTA 다시 로딩
+   */
+  private async subscribeTradeEvents(profile: Profile) {
+    const account = profile.account;
+    if (!account || !account.startsWith('0x')) return;
+
+    const personaAddress = account as Address;
+
+    const unwatch = watchContractEvent(wagmiConfig, {
+      address: PERSONA_FRAGMENTS_ADDRESS,
+      abi: personaFragmentsAbi,
+      eventName: 'TradeExecuted',
+      args: {
+        persona: personaAddress,
+      },
+      onLogs: () => {
+        console.log('[ProfileTab] TradeExecuted event for persona', personaAddress);
+        this.loadOnchainStats(profile).catch((err) => {
+          console.error('[ProfileTab] loadOnchainStats from event error', err);
+        });
+        this.loadUserHoldingOrChatCTA(profile).catch((err) => {
+          console.error('[ProfileTab] loadUserHoldingOrChatCTA from event error', err);
+        });
+      },
+    });
+
+    this.unsubscribeFns.push(unwatch);
+  }
+
+  /**
+   * SPA 환경에서 언마운트 시 호출해주면 좋음
+   */
+  destroy() {
+    this.unsubscribeFns.forEach((fn) => fn());
+    this.unsubscribeFns = [];
   }
 }

@@ -46,6 +46,7 @@ async function getHoldingRewardSafe(params: {
   amount: bigint;
   side: HoldingRewardSide;
 }): Promise<HoldingRewardData> {
+  // 필요하다면 try/catch 후 fallback 으로 rewardRatio=0 처리 가능
   return fetchHoldingReward(params);
 }
 
@@ -244,10 +245,7 @@ export class TradePanel {
 
     this.submitButton.textContent = mode === 'buy' ? 'Buy' : 'Sell';
 
-    const label =
-      mode === 'buy'
-        ? 'Total'
-        : 'Proceeds';
+    const label = mode === 'buy' ? 'Total' : 'Proceeds';
     this.summaryTotalOrProceeds.previousElementSibling!.textContent = label;
 
     this.clearError();
@@ -380,7 +378,8 @@ export class TradePanel {
           price,
           protocolFeeRate,
           personaOwnerFeeRate,
-          holdingReward: holdingReward.rewardRatio, // 서버 설계에 따라 수정 가능
+          // TODO: 서버에서 실제 holdingReward 금액을 추가로 받을 경우 수정
+          holdingReward: holdingReward.rewardRatio,
         });
 
         // 최종 값으로 요약 업데이트
