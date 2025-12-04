@@ -69,15 +69,14 @@ export async function fetchNotificationsApi(params: {
 /**
  * Mark specific notification IDs as read.
  * POST /notifications/mark-read
- * { ids: number[] }
+ * { id: number }
  */
 export async function markNotificationsAsReadApi(params: {
   token: string;
-  ids: number[];
+  id: number;
 }): Promise<MarkReadResult> {
-  const { token, ids } = params;
+  const { token, id } = params;
   if (!token) throw new Error('Missing authorization token.');
-  if (!ids.length) return { ok: true };
 
   const res = await fetch(`${GAIA_API_BASE_URI}/notifications/mark-read`, {
     method: 'POST',
@@ -85,7 +84,7 @@ export async function markNotificationsAsReadApi(params: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ ids }),
+    body: JSON.stringify({ id }),
   });
 
   if (!res.ok) {

@@ -9,13 +9,24 @@ import {
 import './notifications.css';
 
 type NotificationVerbType =
+  // Post
   | 'post.like'
   | 'post.comment'
+  | 'post.reply'
+  | 'post.repost'
+  | 'post.quote'
+  | 'post.mention'
+  // Persona / trade
   | 'persona.buy'
   | 'persona.sell'
+  | 'trade.buy'
+  | 'trade.sell'
+  // User / chat / system
   | 'user.follow'
-  | 'post.mention'
+  | 'chat.reply'
+  | 'chat.reaction'
   | 'system.announcement'
+  // Fallback
   | string;
 
 interface NotificationItemUI {
@@ -76,6 +87,8 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
   let navigatePath: string | null = null;
 
   switch (type) {
+    /* ----- Post-related ----- */
+
     case 'post.like':
       verb = 'liked your post';
       preview = (meta.postPreview as string) ?? null;
@@ -85,12 +98,47 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
       break;
 
     case 'post.comment':
+    case 'post.reply':
+      // Treat "post.reply" as a comment for UI purpose
       verb = 'commented on your post';
-      preview = (meta.commentPreview as string) ?? null;
+      preview =
+        (meta.commentPreview as string) ??
+        (meta.replyPreview as string) ??
+        (meta.postPreview as string) ??
+        null;
       if (n.targetId) {
         navigatePath = `/post/${n.targetId}`;
       }
       break;
+
+    case 'post.repost':
+      verb = 'reposted your post';
+      preview = (meta.postPreview as string) ?? null;
+      if (n.targetId) {
+        navigatePath = `/post/${n.targetId}`;
+      }
+      break;
+
+    case 'post.quote':
+      verb = 'quoted your post';
+      preview =
+        (meta.quotePreview as string) ??
+        (meta.postPreview as string) ??
+        null;
+      if (n.targetId) {
+        navigatePath = `/post/${n.targetId}`;
+      }
+      break;
+
+    case 'post.mention':
+      verb = 'mentioned you in a post';
+      preview = (meta.postPreview as string) ?? null;
+      if (n.targetId) {
+        navigatePath = `/post/${n.targetId}`;
+      }
+      break;
+
+    /* ----- Persona / trade ----- */
 
     case 'persona.buy':
       verb = 'bought fragments of your persona';
@@ -108,15 +156,48 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
       }
       break;
 
+    case 'trade.buy':
+      verb = 'bought persona fragments';
+      preview = (meta.message as string) ?? null;
+      if (meta.personaAddress) {
+        navigatePath = `/profile/${meta.personaAddress as string}`;
+      }
+      break;
+
+    case 'trade.sell':
+      verb = 'sold persona fragments';
+      preview = (meta.message as string) ?? null;
+      if (meta.personaAddress) {
+        navigatePath = `/profile/${meta.personaAddress as string}`;
+      }
+      break;
+
+    /* ----- User / chat / system ----- */
+
     case 'user.follow':
       verb = 'started following you';
       break;
 
-    case 'post.mention':
-      verb = 'mentioned you in a post';
-      preview = (meta.postPreview as string) ?? null;
-      if (n.targetId) {
-        navigatePath = `/post/${n.targetId}`;
+    case 'chat.reply':
+      verb = 'replied to your chat';
+      preview =
+        (meta.messagePreview as string) ??
+        (meta.chatPreview as string) ??
+        null;
+      // If personaAddress exists, navigate to /chat/:personaAddress
+      if (meta.personaAddress) {
+        navigatePath = `/chat/${meta.personaAddress as string}`;
+      }
+      break;
+
+    case 'chat.reaction':
+      verb = 'reacted to your chat message';
+      preview =
+        (meta.messagePreview as string) ??
+        (meta.chatPreview as string) ??
+        null;
+      if (meta.personaAddress) {
+        navigatePath = `/chat/${meta.personaAddress as string}`;
       }
       break;
 
@@ -124,6 +205,8 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
       verb = 'System notification';
       preview = (meta.message as string) ?? null;
       break;
+
+    /* ----- Fallback ----- */
 
     default:
       verb = 'sent you a notification';
@@ -154,13 +237,33 @@ type NotificationTypeUI =
   | 'other';
 
 function mapTypeToVisual(type: NotificationVerbType): NotificationTypeUI {
+  // Post
   if (type.startsWith('post.like')) return 'like';
-  if (type.startsWith('post.comment')) return 'comment';
-  if (type.startsWith('persona.buy') || type.startsWith('persona.sell'))
-    return 'buy';
-  if (type.startsWith('user.follow')) return 'follow';
+  if (
+    type.startsWith('post.comment') ||
+    type.startsWith('post.reply') ||
+    type.startsWith('post.repost') ||
+    type.startsWith('post.quote')
+  ) {
+    return 'comment';
+  }
   if (type.startsWith('post.mention')) return 'mention';
+
+  // Persona / trade → treat as "buy" for the green arrow icon
+  if (
+    type.startsWith('persona.buy') ||
+    type.startsWith('persona.sell') ||
+    type.startsWith('trade.buy') ||
+    type.startsWith('trade.sell')
+  ) {
+    return 'buy';
+  }
+
+  // User / chat / system
+  if (type.startsWith('user.follow')) return 'follow';
+  if (type.startsWith('chat.')) return 'comment';
   if (type.startsWith('system.')) return 'system';
+
   return 'other';
 }
 
@@ -401,7 +504,7 @@ export class NotificationsTab {
         try {
           await markNotificationsAsReadApi({
             token,
-            ids: [item.id],
+            id: item.id,
           });
         } catch (err) {
           console.error('[NotificationsTab] mark read error', err);

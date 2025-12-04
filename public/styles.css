@@ -4050,6 +4050,31 @@ ion-modal ion-content {
   border-radius: 999px;
   overflow: hidden;
 }
+
+/* Ensure tab buttons can host absolutely-positioned badge */
+#main-tab-bar ion-tab-button {
+  position: relative;
+}
+
+/* Notifications tab numeric badge on bottom bar */
+.notifications-tab-badge {
+  position: absolute;
+  top: 4px;
+  right: 18px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--home-accent-teal, #006d75);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: none;
+  /* hidden when count is 0 */
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
 /* ===== 모달 공통 ===== */
 
 ion-modal.edit-profile-modal {
