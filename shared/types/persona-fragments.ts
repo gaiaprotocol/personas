@@ -83,15 +83,19 @@ export function rowToPersonaFragmentHolding(
   };
 }
 
-export interface TrendingPersonaFragment {
-  personaAddress: string;     // 0x...
-  name: string;               // profile nickname or shortened address
-  currentSupply: string;      // uint256 as string
+export type TrendingPersonaFragment = {
+  personaAddress: `0x${string}`;
+  name: string;
+  currentSupply: string;
   holderCount: number;
-  lastPrice: string;          // wei as string
+  lastPrice: string;
   lastBlockNumber: number;
-}
 
-export interface TrendingPersonaFragmentsResponse {
+  // 24시간 통계
+  volume24hWei: string;        // 24h 누적 거래 금액 (wei 기준)
+  change24hPct: number | null; // 24h 가격 변화율 (예: 12.34는 +12.34%)
+};
+
+export type TrendingPersonaFragmentsResponse = {
   personas: TrendingPersonaFragment[];
-}
+};

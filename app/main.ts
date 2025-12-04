@@ -517,6 +517,39 @@ function renderHomeTrendingCards(
       }
     })();
 
+    // 24h 변화율 포맷팅
+    const changeLabel = (() => {
+      if (p.change24hPct === null || Number.isNaN(p.change24hPct)) return '—';
+
+      const value = p.change24hPct;
+      const sign = value > 0 ? '+' : value < 0 ? '' : ''; // 0이면 + 안 붙이기
+      return `${sign}${value.toFixed(2)}%`;
+    })();
+
+    const changeClass = (() => {
+      if (p.change24hPct === null || Number.isNaN(p.change24hPct)) return '';
+      if (p.change24hPct > 0) return 'home-card-change-up';
+      if (p.change24hPct < 0) return 'home-card-change-down';
+      return ''; // 0%일 때는 중립
+    })();
+
+    // 24h 볼륨 (wei → ETH)
+    const volumeEthLabel = (() => {
+      try {
+        const volWei = BigInt(p.volume24hWei ?? '0');
+        if (volWei === 0n) return '0 ETH';
+
+        const volEth = Number(formatEther(volWei));
+        if (!Number.isFinite(volEth)) return '—';
+
+        if (volEth < 0.0001) return '<0.0001 ETH';
+        if (volEth >= 1000) return `${volEth.toFixed(0)} ETH`;
+        return `${volEth.toFixed(4)} ETH`;
+      } catch {
+        return '—';
+      }
+    })();
+
     const avatarInitial = (p.name || '').trim().charAt(0).toUpperCase() || 'P';
 
     card.innerHTML = `
@@ -534,7 +567,7 @@ function renderHomeTrendingCards(
       <div class="home-card-stats-row">
         <div>
           <div class="home-card-stat-label">24h Change</div>
-          <div class="home-card-stat-value home-card-change-up">—</div>
+          <div class="home-card-stat-value ${changeClass}">${changeLabel}</div>
         </div>
         <div>
           <div class="home-card-stat-label">Holders</div>
@@ -546,7 +579,7 @@ function renderHomeTrendingCards(
 
       <div>
         <div class="home-card-volume-label">24h Volume</div>
-        <div class="home-card-volume-value">—</div>
+        <div class="home-card-volume-value">${volumeEthLabel}</div>
       </div>
 
       <button class="home-card-button" type="button">Open Persona</button>

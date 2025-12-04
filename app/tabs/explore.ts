@@ -2,76 +2,49 @@ import '@shoelace-style/shoelace';
 import { el } from '@webtaku/el';
 import './explore.css';
 
-type SortKey = 'trending' | 'holders' | 'volume' | 'price';
+import { formatEther } from 'viem';
+import type { TrendingPersonaFragment } from '../../shared/types/persona-fragments';
+import {
+  ExploreSortKey,
+  fetchTrendingPersonaFragments,
+} from '../api/persona-fragments';
+
+type SortKey = ExploreSortKey;
 
 interface PersonaData {
-  id: string;
+  id: string;                // personaAddress
   name: string;
   role: string;
   verified?: boolean;
-  price: string;   // "$1.92"
-  holders: string; // "2.4k" / "198"
-  volume: string;  // "$420k"
-  change: string;  // "+35%"
-}
 
-const samplePersonas: PersonaData[] = [
-  {
-    id: 'satoshi',
-    name: 'Satoshi',
-    role: 'Bitcoin Creator',
-    verified: true,
-    price: '$0.82',
-    holders: '2.4k',
-    volume: '$420k',
-    change: '+35%'
-  },
-  {
-    id: 'noah',
-    name: 'Noah Tech',
-    role: 'Blockchain Engineer',
-    verified: false,
-    price: '$1.92',
-    holders: '198',
-    volume: '$8.9k',
-    change: '+23.1%'
-  },
-  {
-    id: 'james',
-    name: 'James Miller',
-    role: 'Content Creator & Streamer',
-    verified: false,
-    price: '$1.33',
-    holders: '156',
-    volume: '$7.5k',
-    change: '+19.4%'
-  },
-  {
-    id: 'marcus',
-    name: 'Marcus Dev',
-    role: 'Open Source Contributor',
-    verified: true,
-    price: '$1.55',
-    holders: '234',
-    volume: '$12.3k',
-    change: '+15.7%'
-  }
-];
+  priceEth: number;
+  priceLabel: string;
+
+  holders: number;
+  holdersLabel: string;
+
+  volumeEth24h: number;
+  volumeLabel: string;
+
+  changePct24h: number | null;
+  changeLabel: string;
+}
 
 export class ExploreTab {
   el: HTMLElement;
   listEl: HTMLElement;
 
-  private personas: PersonaData[];
-  private filtered: PersonaData[];
+  private personas: PersonaData[] = [];
+  private filtered: PersonaData[] = [];
+
   private currentSort: SortKey = 'trending';
+  private currentQuery: string = '';
 
   private navigate?: (path: string) => void;
+  private isLoading = false;
 
   constructor(navigate?: (path: string) => void) {
     this.navigate = navigate;
-    this.personas = samplePersonas;
-    this.filtered = [...this.personas];
 
     this.el = el('section.explore-wrapper');
 
@@ -79,7 +52,7 @@ export class ExploreTab {
     const header = el(
       'div.explore-header',
       el('h2', 'Explore Personas'),
-      el('p', 'Discover and invest in unique digital identities')
+      el('p', 'Discover and invest in unique digital identities'),
     );
 
     // 검색바
@@ -92,11 +65,11 @@ export class ExploreTab {
           size: 'medium',
           pill: true,
           clearable: true,
-          placeholder: 'Search personas by name or description…',
-          'data-role': 'explore-search'
+          placeholder: 'Search personas by name or address…',
+          'data-role': 'explore-search',
         },
-        el('sl-icon', { slot: 'prefix', name: 'search' })
-      ) as any
+        el('sl-icon', { slot: 'prefix', name: 'search' }),
+      ) as any,
     );
 
     const searchInput = search.querySelector('sl-input') as any;
@@ -108,71 +81,160 @@ export class ExploreTab {
       searchInput.addEventListener('sl-clear', () => this.handleSearch(''));
     }
 
-    // 탭 그룹 (Shoelace 규격대로 탭 + 패널 모두 생성)
+    // 탭 그룹
     const tabs = el(
       'sl-tab-group.explore-tabs',
-      // nav
       el('sl-tab', { slot: 'nav', panel: 'trending', active: true }, 'Trending'),
       el('sl-tab', { slot: 'nav', panel: 'holders' }, 'Most Holders'),
       el('sl-tab', { slot: 'nav', panel: 'volume' }, 'Volume'),
       el('sl-tab', { slot: 'nav', panel: 'price' }, 'Price'),
-      // panels (내용은 안 쓰지만 탭 동작을 위해 필요)
       el('sl-tab-panel', { name: 'trending' }),
       el('sl-tab-panel', { name: 'holders' }),
       el('sl-tab-panel', { name: 'volume' }),
-      el('sl-tab-panel', { name: 'price' })
+      el('sl-tab-panel', { name: 'price' }),
     ) as any;
 
-    // 탭 변경 시 정렬 키 변경
     tabs.addEventListener('sl-tab-show', (event: any) => {
       const name = event.detail?.name as string | undefined;
       if (!name) return;
-
-      // name값이 SortKey와 동일하므로 그대로 캐스팅
-      this.currentSort = name as SortKey;
-      this.applySortAndRender();
+      const sortKey = name as SortKey;
+      void this.loadData(sortKey);
     });
 
     // 리스트 컨테이너
     this.listEl = el('div.explore-list');
 
-    // 카운트 (탭 바로 아래에 배치)
+    // 카운트
     const countEl = el(
       'div.explore-count',
-      el('span', `${this.filtered.length} personas found`)
+      el('span', 'Loading personas...'),
     );
 
-    const controls = el(
-      'div.explore-controls',
-      search,
-      tabs,
-      countEl
-    );
+    const controls = el('div.explore-controls', search, tabs, countEl);
 
-    // 전체 조립
-    this.el.append(
-      header,
-      controls,
-      this.listEl
-    );
+    this.el.append(header, controls, this.listEl);
 
-    this.applySortAndRender();
+    // 초기 로딩: trending 기준
+    void this.loadData('trending');
+  }
+
+  /* ---------- 데이터 로드 ---------- */
+
+  private async loadData(sort: SortKey) {
+    if (this.isLoading) return;
+    this.isLoading = true;
+    this.currentSort = sort;
+
+    const countEl = this.el.querySelector('.explore-count span');
+    if (countEl) countEl.textContent = 'Loading personas...';
+
+    this.listEl.innerHTML =
+      '<div style="padding:0.75rem; font-size:0.9rem; color:#888;">Loading personas...</div>';
+
+    try {
+      // Explore 화면이니 최대 100개 정도만
+      const { personas } = await fetchTrendingPersonaFragments(100, sort);
+
+      this.personas = personas.map((p) => this.fromTrendingFragment(p));
+
+      // 현재 검색어가 있으면 즉시 필터 적용
+      this.applySearchFilter();
+      this.applySortAndRender();
+      this.updateCount();
+    } catch (err) {
+      console.error('[ExploreTab] failed to load personas', err);
+      this.listEl.innerHTML =
+        '<div style="padding:0.75rem; font-size:0.9rem; color:#f97373;">Failed to load personas. Please try again.</div>';
+      const count = this.el.querySelector('.explore-count span');
+      if (count) count.textContent = '0 personas found';
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  private fromTrendingFragment(p: TrendingPersonaFragment): PersonaData {
+    // price (wei → ETH)
+    let priceEth = 0;
+    let priceLabel = '-';
+    try {
+      const v = Number(formatEther(BigInt(p.lastPrice)));
+      priceEth = Number.isFinite(v) ? v : 0;
+      priceLabel =
+        priceEth >= 1000
+          ? `${priceEth.toFixed(0)} ETH`
+          : `${priceEth.toFixed(4)} ETH`;
+    } catch {
+      // ignore
+    }
+
+    // 24h volume
+    let volumeEth = 0;
+    let volumeLabel = '0 ETH';
+    try {
+      const v = Number(formatEther(BigInt(p.volume24hWei ?? '0')));
+      volumeEth = Number.isFinite(v) ? v : 0;
+
+      if (!volumeEth) {
+        volumeLabel = '0 ETH';
+      } else if (volumeEth < 0.0001) {
+        volumeLabel = '<0.0001 ETH';
+      } else if (volumeEth >= 1000) {
+        volumeLabel = `${volumeEth.toFixed(0)} ETH`;
+      } else {
+        volumeLabel = `${volumeEth.toFixed(4)} ETH`;
+      }
+    } catch {
+      // ignore
+    }
+
+    // 24h change
+    const changePct = p.change24hPct ?? null;
+    const changeLabel =
+      changePct === null || Number.isNaN(changePct)
+        ? '—'
+        : `${changePct > 0 ? '+' : ''}${changePct.toFixed(2)}%`;
+
+    return {
+      id: p.personaAddress,
+      name: p.name || p.personaAddress,
+      role: 'On-chain Persona', // 나중에 프로필 정보로 대체 가능
+      verified: false,          // 필요하다면 profile 플래그 반영
+
+      priceEth,
+      priceLabel,
+
+      holders: p.holderCount,
+      holdersLabel: p.holderCount.toLocaleString(),
+
+      volumeEth24h: volumeEth,
+      volumeLabel,
+
+      changePct24h: changePct,
+      changeLabel,
+    };
   }
 
   /* ---------- 검색 ---------- */
 
   private handleSearch(raw: string) {
-    const query = raw.toLowerCase().trim();
-    if (!query) {
-      this.filtered = [...this.personas];
-    } else {
-      this.filtered = this.personas.filter((p) =>
-        p.name.toLowerCase().includes(query) ||
-        p.role.toLowerCase().includes(query)
-      );
-    }
+    this.currentQuery = raw.toLowerCase().trim();
+    this.applySearchFilter();
     this.updateCount();
     this.applySortAndRender();
+  }
+
+  private applySearchFilter() {
+    const q = this.currentQuery;
+    if (!q) {
+      this.filtered = [...this.personas];
+      return;
+    }
+
+    this.filtered = this.personas.filter((p) =>
+      p.name.toLowerCase().includes(q) ||
+      p.role.toLowerCase().includes(q) ||
+      p.id.toLowerCase().includes(q),
+    );
   }
 
   private updateCount() {
@@ -189,17 +251,27 @@ export class ExploreTab {
 
     switch (this.currentSort) {
       case 'holders':
-        data.sort((a, b) => parseHolders(b.holders) - parseHolders(a.holders));
+        data.sort((a, b) => b.holders - a.holders);
         break;
       case 'volume':
-        data.sort((a, b) => parseVolume(b.volume) - parseVolume(a.volume));
+        data.sort((a, b) => b.volumeEth24h - a.volumeEth24h);
         break;
       case 'price':
-        data.sort((a, b) => parsePrice(b.price) - parsePrice(a.price)); // 가격 높은 순
+        data.sort((a, b) => b.priceEth - a.priceEth);
         break;
       case 'trending':
       default:
-        data.sort((a, b) => parseChange(b.change) - parseChange(a.change)); // 변화율 높은 순
+        data.sort((a, b) => {
+          const av =
+            a.changePct24h === null || Number.isNaN(a.changePct24h)
+              ? -Infinity
+              : a.changePct24h;
+          const bv =
+            b.changePct24h === null || Number.isNaN(b.changePct24h)
+              ? -Infinity
+              : b.changePct24h;
+          return bv - av;
+        });
         break;
     }
 
@@ -208,6 +280,12 @@ export class ExploreTab {
 
   private renderList(data: PersonaData[]) {
     this.listEl.innerHTML = '';
+
+    if (!data.length) {
+      this.listEl.innerHTML =
+        '<div style="padding:0.75rem; font-size:0.9rem; color:#888;">No personas found.</div>';
+      return;
+    }
 
     data.forEach((p) => {
       const row = el(
@@ -219,7 +297,7 @@ export class ExploreTab {
           'div.row-left',
           el(
             'div.avatar-wrapper',
-            el('sl-avatar', { initials: p.name[0], shape: 'circle' })
+            el('sl-avatar', { initials: p.name[0] || 'P', shape: 'circle' }),
           ),
           el(
             'div.info',
@@ -229,22 +307,26 @@ export class ExploreTab {
               p.verified
                 ? el('sl-icon', {
                   name: 'patch-check-fill',
-                  class: 'icon-verified'
+                  class: 'icon-verified',
                 })
-                : null
+                : null,
             ),
-            el('span.role', p.role)
-          )
+            el('span.role', p.role),
+          ),
         ),
 
         // 오른쪽: 스탯
         el(
           'div.row-right',
-          this.createStatCol('Price', p.price, 'highlight'),
-          this.createStatCol('24h', p.change, 'success'),
-          this.createStatCol('Holders', p.holders),
-          this.createStatCol('Volume', p.volume)
-        )
+          this.createStatCol('Price', p.priceLabel, 'highlight'),
+          this.createStatCol(
+            '24h',
+            p.changeLabel,
+            p.changePct24h !== null && p.changePct24h > 0 ? 'success' : 'default',
+          ),
+          this.createStatCol('Holders', p.holdersLabel),
+          this.createStatCol('Volume', p.volumeLabel),
+        ),
       ) as HTMLElement;
 
       row.addEventListener('click', () => {
@@ -262,7 +344,7 @@ export class ExploreTab {
   private createStatCol(
     label: string,
     value: string,
-    variant: 'default' | 'highlight' | 'success' = 'default'
+    variant: 'default' | 'highlight' | 'success' = 'default',
   ) {
     let valueClass = 'stat-value';
     if (variant === 'highlight') valueClass += ' text-highlight';
@@ -271,26 +353,7 @@ export class ExploreTab {
     return el(
       'div.stat-col',
       el('span.stat-label', label),
-      el('span', { class: valueClass }, value)
+      el('span', { class: valueClass }, value),
     );
   }
-}
-
-/* ---------- 숫자 파싱 유틸 ---------- */
-
-function parsePrice(s: string): number {
-  return parseFloat(s.replace(/[^0-9.]/g, '')) || 0;
-}
-
-function parseHolders(s: string): number {
-  const m = s.includes('k') ? 1000 : 1;
-  return (parseFloat(s.replace(/[^0-9.]/g, '')) || 0) * m;
-}
-
-function parseVolume(s: string): number {
-  return parseHolders(s); // 같은 포맷 ($8.9k, $420k)
-}
-
-function parseChange(s: string): number {
-  return parseFloat(s.replace(/[^0-9.-]/g, '')) || 0;
 }
