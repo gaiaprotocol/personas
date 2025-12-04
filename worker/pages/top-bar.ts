@@ -45,14 +45,15 @@ const topBar = h(
     h(
       "ion-buttons",
       { slot: "end" },
-      h(
+      //TODO: 우선 숨김
+      /*h(
         "ion-button",
         {
           id: "open-settings",
           ariaLabel: "Open settings",
         },
         h("ion-icon", { slot: "icon-only", name: "settings-outline" })
-      )
+      )*/
     )
   )
 );

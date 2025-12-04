@@ -1,103 +1,193 @@
+import { tokenManager } from '@gaiaprotocol/client-common';
 import { el } from '@webtaku/el';
+import {
+  fetchNotificationsApi,
+  markAllNotificationsAsReadApi,
+  markNotificationsAsReadApi,
+  RawNotification,
+} from '../api/notifications';
 import './notifications.css';
 
-type NotificationType =
+type NotificationVerbType =
+  | 'post.like'
+  | 'post.comment'
+  | 'persona.buy'
+  | 'persona.sell'
+  | 'user.follow'
+  | 'post.mention'
+  | 'system.announcement'
+  | string;
+
+interface NotificationItemUI {
+  id: number;
+  type: NotificationVerbType;
+  actorName: string;
+  actorInitial: string;
+  verb: string;
+  preview?: string | null;
+  timeAgo: string;
+  unread: boolean;
+  navigatePath?: string | null;
+}
+
+/** Shorten address for display */
+function shortenAddress(addr: string | null): string {
+  if (!addr) return 'Someone';
+  if (!addr.startsWith('0x') || addr.length <= 10) return addr;
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+/** createdAt(unix seconds) → "2 hours ago" style string */
+function formatTimeAgo(createdAtSec: number): string {
+  const nowMs = Date.now();
+  const createdMs = createdAtSec * 1000;
+  const diffSec = Math.max(0, Math.floor((nowMs - createdMs) / 1000));
+
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} min ago`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+  const diffWeek = Math.floor(diffDay / 7);
+  if (diffWeek < 5) return `${diffWeek} week${diffWeek > 1 ? 's' : ''} ago`;
+  const diffMonth = Math.floor(diffDay / 30);
+  return `${diffMonth} month${diffMonth > 1 ? 's' : ''} ago`;
+}
+
+/**
+ * Convert RawNotification from server to NotificationItemUI for UI rendering.
+ */
+function mapRawToUI(n: RawNotification): NotificationItemUI {
+  const type = n.notificationType as NotificationVerbType;
+
+  const meta = n.metadata ?? {};
+  const actorNickname =
+    (meta.actorNickname as string | undefined) ||
+    (meta.actor_name as string | undefined) ||
+    undefined;
+
+  const actorName = actorNickname ?? shortenAddress(n.actor);
+  const actorInitial = actorName.trim().charAt(0).toUpperCase() || 'U';
+
+  let verb = 'did something';
+  let preview: string | null = null;
+  let navigatePath: string | null = null;
+
+  switch (type) {
+    case 'post.like':
+      verb = 'liked your post';
+      preview = (meta.postPreview as string) ?? null;
+      if (n.targetId) {
+        navigatePath = `/post/${n.targetId}`;
+      }
+      break;
+
+    case 'post.comment':
+      verb = 'commented on your post';
+      preview = (meta.commentPreview as string) ?? null;
+      if (n.targetId) {
+        navigatePath = `/post/${n.targetId}`;
+      }
+      break;
+
+    case 'persona.buy':
+      verb = 'bought fragments of your persona';
+      preview = (meta.message as string) ?? null;
+      if (meta.personaAddress) {
+        navigatePath = `/profile/${meta.personaAddress as string}`;
+      }
+      break;
+
+    case 'persona.sell':
+      verb = 'sold fragments of your persona';
+      preview = (meta.message as string) ?? null;
+      if (meta.personaAddress) {
+        navigatePath = `/profile/${meta.personaAddress as string}`;
+      }
+      break;
+
+    case 'user.follow':
+      verb = 'started following you';
+      break;
+
+    case 'post.mention':
+      verb = 'mentioned you in a post';
+      preview = (meta.postPreview as string) ?? null;
+      if (n.targetId) {
+        navigatePath = `/post/${n.targetId}`;
+      }
+      break;
+
+    case 'system.announcement':
+      verb = 'System notification';
+      preview = (meta.message as string) ?? null;
+      break;
+
+    default:
+      verb = 'sent you a notification';
+      preview = (meta.message as string) ?? null;
+      break;
+  }
+
+  return {
+    id: n.id,
+    type,
+    actorName,
+    actorInitial,
+    verb,
+    preview: preview ?? undefined,
+    timeAgo: formatTimeAgo(n.createdAt),
+    unread: !n.isRead,
+    navigatePath,
+  };
+}
+
+type NotificationTypeUI =
   | 'like'
   | 'comment'
   | 'buy'
   | 'follow'
   | 'mention'
-  | 'system';
+  | 'system'
+  | 'other';
 
-interface NotificationItem {
-  id: string;
-  actorName: string;
-  actorInitial: string;
-  type: NotificationType;
-  verb: string;          // "liked your post"
-  subline?: string;      // "commented on your post" 같은 설명
-  preview?: string;      // 박스 안에 들어가는 텍스트
-  timeAgo: string;       // "2 hours ago"
-  unread: boolean;
+function mapTypeToVisual(type: NotificationVerbType): NotificationTypeUI {
+  if (type.startsWith('post.like')) return 'like';
+  if (type.startsWith('post.comment')) return 'comment';
+  if (type.startsWith('persona.buy') || type.startsWith('persona.sell'))
+    return 'buy';
+  if (type.startsWith('user.follow')) return 'follow';
+  if (type.startsWith('post.mention')) return 'mention';
+  if (type.startsWith('system.')) return 'system';
+  return 'other';
 }
 
-const sampleNotifications: NotificationItem[] = [
-  {
-    id: 'n1',
-    actorName: 'Alex Chen',
-    actorInitial: 'A',
-    type: 'like',
-    verb: 'liked your post',
-    preview: 'Just dropped my new persona fragment collection!',
-    timeAgo: '2 hours ago',
-    unread: true
-  },
-  {
-    id: 'n2',
-    actorName: 'Luna Park',
-    actorInitial: 'L',
-    type: 'comment',
-    verb: 'commented on your post',
-    preview: 'This is amazing! Congrats on the momentum!🔥',
-    timeAgo: '3 hours ago',
-    unread: true
-  },
-  {
-    id: 'n3',
-    actorName: 'Noah Tech',
-    actorInitial: 'N',
-    type: 'buy',
-    verb: 'bought 10 fragments of your persona',
-    preview: 'Price increased to $45.32',
-    timeAgo: '5 hours ago',
-    unread: true
-  },
-  {
-    id: 'n4',
-    actorName: 'Crypto Trader',
-    actorInitial: 'C',
-    type: 'follow',
-    verb: 'started following you',
-    timeAgo: '1 day ago',
-    unread: false
-  },
-  {
-    id: 'n5',
-    actorName: 'Web3 Dev',
-    actorInitial: 'W',
-    type: 'mention',
-    verb: 'mentioned you in a post',
-    preview: '@You is building something incredible on Gaia',
-    timeAgo: '1 day ago',
-    unread: false
-  },
-  {
-    id: 'n6',
-    actorName: 'System',
-    actorInitial: 'S',
-    type: 'system',
-    verb: 'Your persona price reached a milestone',
-    preview: 'Price ATH: $50.00',
-    timeAgo: '2 days ago',
-    unread: false
-  }
-];
+interface NotificationsTabOptions {
+  onUnreadCountChange?: (count: number) => void;
+}
 
 export class NotificationsTab {
   el: HTMLElement;
 
-  private items: NotificationItem[];
-
+  private items: NotificationItemUI[] = [];
   private subtitleEl!: HTMLElement;
   private markAllButton!: HTMLButtonElement;
   private listEl!: HTMLElement;
 
   private navigate?: (path: string) => void;
+  private loading = false;
 
-  constructor(navigate?: (path: string) => void) {
+  // Callback to notify external code (e.g. main.ts) of unread-count changes
+  private onUnreadCountChange?: (count: number) => void;
+
+  constructor(
+    navigate?: (path: string) => void,
+    options?: NotificationsTabOptions,
+  ) {
     this.navigate = navigate;
-
-    this.items = [...sampleNotifications];
+    this.onUnreadCountChange = options?.onUnreadCountChange;
 
     this.el = el('section.notifications-wrapper');
     const inner = el('div.notifications-inner');
@@ -108,48 +198,94 @@ export class NotificationsTab {
     inner.append(header, this.listEl);
     this.el.append(inner);
 
-    this.renderList();
-    this.updateUnreadSummary();
+    // Initial load
+    void this.fetchAndRender();
   }
 
-  /* ---------- 헤더 ---------- */
+  /**
+   * Public method to refresh notifications from outside (used in main.ts).
+   */
+  public async refresh() {
+    await this.fetchAndRender();
+  }
+
+  /* ---------- Header ---------- */
 
   private buildHeader(): HTMLElement {
     const title = el('h2.notifications-title', 'Notifications');
 
     this.subtitleEl = el(
       'p.notifications-subtitle',
-      ''
+      '',
     ) as HTMLElement;
 
-    const left = el(
-      'div',
-      title,
-      this.subtitleEl
-    );
+    const left = el('div', title, this.subtitleEl);
 
     this.markAllButton = el(
       'button.notifications-mark-all-btn',
       {},
-      'Mark all as read'
+      'Mark all as read',
     ) as HTMLButtonElement;
 
     this.markAllButton.addEventListener('click', () => this.handleMarkAll());
 
     const right = el(
       'div.notifications-header-actions',
-      this.markAllButton
+      this.markAllButton,
     );
 
-    return el(
-      'div.notifications-header',
-      left,
-      right
-    );
+    return el('div.notifications-header', left, right);
+  }
+
+  /* ---------- Fetch data ---------- */
+
+  private async fetchAndRender() {
+    const token = tokenManager.getToken?.();
+    if (!token) {
+      this.items = [];
+      this.renderList();
+      this.subtitleEl.textContent = 'Sign in to see your notifications';
+      this.markAllButton.disabled = true;
+      // Notify external code that unread count is 0 when signed out
+      if (this.onUnreadCountChange) {
+        this.onUnreadCountChange(0);
+      }
+      return;
+    }
+
+    if (this.loading) return;
+    this.loading = true;
+
+    try {
+      const { notifications } = await fetchNotificationsApi({
+        token,
+        limit: 50,
+        cursor: 0,
+      });
+
+      this.items = notifications.map(mapRawToUI);
+      this.renderList();
+      this.updateUnreadSummary();
+    } catch (err: any) {
+      console.error('[NotificationsTab] fetch failed', err);
+      this.items = [];
+      this.listEl.innerHTML =
+        '<div style="padding:0.75rem; font-size:0.85rem; color:#f97373;">Failed to load notifications.</div>';
+      this.subtitleEl.textContent = 'Failed to load notifications';
+      this.markAllButton.disabled = true;
+
+      // In case of error, consider unread count as 0 for the badge
+      if (this.onUnreadCountChange) {
+        this.onUnreadCountChange(0);
+      }
+    } finally {
+      this.loading = false;
+    }
   }
 
   private updateUnreadSummary() {
     const unreadCount = this.items.filter((n) => n.unread).length;
+
     if (unreadCount === 0) {
       this.subtitleEl.textContent = 'You have no unread notifications';
       this.markAllButton.disabled = true;
@@ -160,18 +296,37 @@ export class NotificationsTab {
       this.subtitleEl.textContent = `You have ${unreadCount} unread notifications`;
       this.markAllButton.disabled = false;
     }
+
+    // Notify external code (e.g. to update the bottom tab badge)
+    if (this.onUnreadCountChange) {
+      this.onUnreadCountChange(unreadCount);
+    }
   }
 
-  private handleMarkAll() {
-    this.items = this.items.map((n) => ({ ...n, unread: false }));
-    this.renderList();
-    this.updateUnreadSummary();
+  private async handleMarkAll() {
+    const token = tokenManager.getToken?.();
+    if (!token) return;
+
+    try {
+      await markAllNotificationsAsReadApi(token);
+      this.items = this.items.map((n) => ({ ...n, unread: false }));
+      this.renderList();
+      this.updateUnreadSummary();
+    } catch (err) {
+      console.error('[NotificationsTab] markAll error', err);
+    }
   }
 
-  /* ---------- 리스트 렌더링 ---------- */
+  /* ---------- List rendering ---------- */
 
   private renderList() {
     this.listEl.innerHTML = '';
+
+    if (!this.items.length) {
+      this.listEl.innerHTML =
+        '<div style="padding:0.75rem; font-size:0.85rem; color:#888;">No notifications yet.</div>';
+      return;
+    }
 
     this.items.forEach((item) => {
       const row = this.renderItem(item);
@@ -179,103 +334,88 @@ export class NotificationsTab {
     });
   }
 
-  private renderItem(item: NotificationItem): HTMLElement {
-    // 왼쪽: 아바타 + 타입 아이콘
+  private renderItem(item: NotificationItemUI): HTMLElement {
+    const typeVisual = mapTypeToVisual(item.type);
+
+    // Left: avatar + type icon
     const avatar = el('div.notification-avatar', item.actorInitial);
 
     const typeIcon = el(
       'div.notification-type-icon',
-      this.getTypeSymbol(item.type)
+      this.getTypeSymbol(typeVisual),
     );
-    typeIcon.classList.add(this.getTypeClass(item.type));
+    const typeClass = this.getTypeClass(typeVisual);
+    if (typeClass) typeIcon.classList.add(typeClass);
 
-    const left = el(
-      'div.notification-left',
-      avatar,
-      typeIcon
-    );
+    const left = el('div.notification-left', avatar, typeIcon);
 
-    // 가운데: 본문
+    // Center: main body
     const actor = el('span.notification-actor', item.actorName);
     const verb = el('span.notification-verb', item.verb);
 
-    const mainRow = el(
-      'div.notification-main-row',
-      actor,
-      verb
-    );
-
-    const subline =
-      item.subline &&
-      el('div.notification-subline', item.subline);
+    const mainRow = el('div.notification-main-row', actor, verb);
 
     const preview =
-      item.preview &&
-      el('div.notification-preview', item.preview);
+      item.preview && el('div.notification-preview', item.preview);
 
     const body = el(
       'div.notification-body',
       mainRow,
-      subline || null,
-      preview || null
+      preview || null,
     );
 
-    // 오른쪽: 점 + 시간
+    // Right: unread dot + time
     const unreadDot = el('div.notification-unread-dot');
     const time = el('div.notification-time', item.timeAgo);
 
-    const meta = el(
-      'div.notification-meta',
-      unreadDot,
-      time
-    );
+    const meta = el('div.notification-meta', unreadDot, time);
 
     const row = el(
       'div.notification-item',
-      { 'data-id': item.id },
+      { 'data-id': String(item.id) },
       left,
       body,
-      meta
+      meta,
     ) as HTMLElement;
 
     if (!item.unread) {
       row.classList.add('read');
     }
 
-    row.addEventListener('click', () => {
-      if (item.unread) {
-        item.unread = false;
-        this.renderList();
-        this.updateUnreadSummary();
-      }
-
-      if (!this.navigate) {
-        console.log('Open notification target:', item.id);
-        return;
-      }
-
-      // ✅ 타입에 따라 임시 라우팅 (원하면 데이터 구조에 맞게 바꾸면 됨)
-      switch (item.type) {
-        case 'like':
-        case 'comment':
-        case 'buy':
-        case 'mention':
-          this.navigate('/post/p1');        // 실제로는 item.targetPostId 같은 걸 쓰면 좋음
-          break;
-        case 'follow':
-          this.navigate('/profile/test');   // 실제로는 item.targetProfileId 등
-          break;
-        case 'system':
-        default:
-          // system은 이동 없이 두거나 다른 경로로
-          break;
-      }
-    });
+    row.addEventListener('click', () => this.handleItemClick(item));
 
     return row;
   }
 
-  private getTypeSymbol(type: NotificationType): string {
+  private async handleItemClick(item: NotificationItemUI) {
+    const token = tokenManager.getToken?.();
+
+    // Immediately update UI
+    if (item.unread) {
+      item.unread = false;
+      this.renderList();
+      this.updateUnreadSummary();
+
+      // Persist read state to server (ignore failures)
+      if (token) {
+        try {
+          await markNotificationsAsReadApi({
+            token,
+            ids: [item.id],
+          });
+        } catch (err) {
+          console.error('[NotificationsTab] mark read error', err);
+        }
+      }
+    }
+
+    if (!this.navigate || !item.navigatePath) {
+      return;
+    }
+    this.navigate(item.navigatePath);
+  }
+
+  private getTypeSymbol(type: NotificationTypeUI): string {
     switch (type) {
       case 'like':
         return '♡';
@@ -294,7 +434,7 @@ export class NotificationsTab {
     }
   }
 
-  private getTypeClass(type: NotificationType): string {
+  private getTypeClass(type: NotificationTypeUI): string {
     switch (type) {
       case 'like':
         return 'notification-type-like';

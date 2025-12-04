@@ -95,6 +95,7 @@ const router = new Navigo('/', {
 let currentProfileRouteId: string | null = null;
 let chatTab: ChatTab | null = null;
 let pendingChatPersonaId: string | null = null;
+let notificationsTab: NotificationsTab | null = null;
 
 // =====================
 //   Tab helpers
@@ -120,56 +121,80 @@ function getPathFromTab(tabKey: string): string {
 }
 
 // =====================
+//   Notifications badge helper
+// =====================
+
+/**
+ * Update the numeric badge on the notifications tab button.
+ * If count <= 0, the badge is hidden.
+ */
+function updateNotificationsBadge(unreadCount: number) {
+  const badge = document.querySelector<HTMLSpanElement>(
+    '#main-tab-bar .notifications-tab-badge',
+  );
+  if (!badge) return;
+
+  if (!unreadCount || unreadCount <= 0) {
+    badge.style.display = 'none';
+    badge.textContent = '';
+  } else {
+    // Show the badge and cap the count visually at 99+
+    badge.style.display = 'flex';
+    badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+  }
+}
+
+// =====================
 //   Profile button avatar render
 // =====================
 
 function applyProfileAvatar(profile: Profile | null) {
-  const buttons = document.querySelectorAll<HTMLElement>("#open-profile");
+  const buttons = document.querySelectorAll<HTMLElement>('#open-profile');
   if (!buttons.length) return;
 
   const hasToken = tokenManager.has();
   const rawAddr = hasToken ? tokenManager.getAddress() : undefined;
 
   buttons.forEach((btn) => {
-    // 매번 버튼 내용을 초기화 (중복 아이콘 방지)
-    btn.innerHTML = "";
+    // reset content every time to avoid duplicated icons
+    btn.innerHTML = '';
 
-    // 로그인 안 된 상태 → 기본 아이콘만 보여주기
+    // Not signed in → default icon
     if (!hasToken || !rawAddr) {
-      const icon = document.createElement("ion-icon");
-      icon.setAttribute("slot", "icon-only");
-      icon.setAttribute("name", "person-circle");
+      const icon = document.createElement('ion-icon');
+      icon.setAttribute('slot', 'icon-only');
+      icon.setAttribute('name', 'person-circle');
       btn.appendChild(icon);
 
-      btn.removeAttribute("title");
+      btn.removeAttribute('title');
       return;
     }
 
-    // 로그인된 상태 → 아바타 렌더링
+    // Signed in → avatar
     const addr = getAddress(rawAddr || zeroAddress);
 
-    const avatarContainer = document.createElement("span");
-    avatarContainer.className = "profile-avatar";
-    avatarContainer.style.display = "inline-flex";
-    avatarContainer.style.alignItems = "center";
-    avatarContainer.style.justifyContent = "center";
-    avatarContainer.style.width = "28px";
-    avatarContainer.style.height = "28px";
-    avatarContainer.style.borderRadius = "999px";
-    avatarContainer.style.overflow = "hidden";
+    const avatarContainer = document.createElement('span');
+    avatarContainer.className = 'profile-avatar';
+    avatarContainer.style.display = 'inline-flex';
+    avatarContainer.style.alignItems = 'center';
+    avatarContainer.style.justifyContent = 'center';
+    avatarContainer.style.width = '28px';
+    avatarContainer.style.height = '28px';
+    avatarContainer.style.borderRadius = '999px';
+    avatarContainer.style.overflow = 'hidden';
 
     if (profile?.avatarUrl) {
-      const img = document.createElement("img");
+      const img = document.createElement('img');
       img.src = profile.avatarUrl;
-      img.alt = profile.nickname || "Profile";
-      img.style.width = "100%";
-      img.style.height = "100%";
-      img.style.objectFit = "cover";
+      img.alt = profile.nickname || 'Profile';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
       avatarContainer.appendChild(img);
     } else {
       const jazz = createJazzicon(addr);
-      (jazz as HTMLElement).style.width = "100%";
-      (jazz as HTMLElement).style.height = "100%";
+      (jazz as HTMLElement).style.width = '100%';
+      (jazz as HTMLElement).style.height = '100%';
       avatarContainer.appendChild(jazz as HTMLElement);
     }
 
@@ -615,10 +640,16 @@ document.addEventListener('DOMContentLoaded', () => {
     (tokenManager as any).on?.('signedIn', async () => {
       await profileManager.init();
       applyProfileAvatar(profileManager.profile);
+
+      // Reload notifications after sign-in and update badge
+      await notificationsTab?.refresh();
     });
 
     (tokenManager as any).on?.('signedOut', () => {
       applyProfileAvatar(null);
+
+      // Reset notifications (and badge) after sign-out
+      void notificationsTab?.refresh();
     });
 
     const navigate = (path: string) => router.navigate(path);
@@ -781,7 +812,10 @@ document.addEventListener('DOMContentLoaded', () => {
       'notifications-tab-content',
     );
     if (notificationsContent) {
-      const notificationsTab = new NotificationsTab(navigate);
+      notificationsTab = new NotificationsTab(navigate, {
+        // Whenever unread count changes, update the bottom tab badge
+        onUnreadCountChange: (count) => updateNotificationsBadge(count),
+      });
       notificationsContent.appendChild(notificationsTab.el);
     }
 
