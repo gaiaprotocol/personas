@@ -33,7 +33,6 @@ export function profile(
 
   const fullAddress = profile.account;
   const shortAddress = shortenAddress(profile.account, 6);
-  const avatarInitial = avatarInitialFromName(displayName);
 
   const socialLinks = profile.socialLinks ?? {};
 
@@ -132,18 +131,31 @@ export function profile(
     profileMainTextChildren.push(socialChips);
   }
 
+  const avatarInitial = avatarInitialFromName(displayName);
+  const avatarChildren = profile.avatarUrl
+    ? b('img.profile-avatar-img', {
+      src: profile.avatarUrl,
+      alt: displayName,
+    })
+    : avatarInitial;
+
+  const coverProps =
+    profile.bannerUrl && profile.bannerUrl.trim().length > 0
+      ? ({ style: `background-image: url('${profile.bannerUrl}')` } as any)
+      : ({} as any);
+
   const mainProfileCard = b(
     'section.profile-card.profile-main-card',
     b(
       'div.profile-main',
-      b('div.profile-avatar', avatarInitial),
+      b('div.profile-avatar', avatarChildren),
       b('div.profile-main-text', ...profileMainTextChildren),
     ),
   );
 
   const heroSection = b(
     'div.profile-hero',
-    b('div.profile-cover'),
+    b('div.profile-cover', coverProps),
     editButton,
     mainProfileCard,
   );

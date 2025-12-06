@@ -1,3 +1,7 @@
+// -----------------------------
+// Profile / SocialLinks
+// -----------------------------
+
 export type SocialLinks = Record<string, string>;
 
 export interface Profile {

@@ -489,6 +489,10 @@ function shortenEthAddress(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
+/**
+ * 홈 트렌딩 카드 렌더링
+ * - p.avatarUrl 이 있으면 이미지, 없으면 이니셜 텍스트
+ */
 function renderHomeTrendingCards(
   personas: TrendingPersonaFragment[],
   navigate: (path: string) => void,
@@ -552,9 +556,14 @@ function renderHomeTrendingCards(
 
     const avatarInitial = (p.name || '').trim().charAt(0).toUpperCase() || 'P';
 
+    // 여기서 아바타 이미지/텍스트 결정
+    const avatarHTML = p.avatarUrl
+      ? `<img src="${p.avatarUrl}" alt="${p.name || 'Persona'}" class="home-card-avatar-img" />`
+      : avatarInitial;
+
     card.innerHTML = `
       <div class="home-card-header">
-        <div class="home-card-avatar">${avatarInitial}</div>
+        <div class="home-card-avatar">${avatarHTML}</div>
         <div class="home-card-meta">
           <div class="home-card-name">${p.name}</div>
           <div class="home-card-address">${shortenEthAddress(p.personaAddress)}</div>

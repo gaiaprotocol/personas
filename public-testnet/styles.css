@@ -2735,10 +2735,32 @@ img.jazzicon {
   position: relative;
 }
 
+/* Cover (banner) */
 .profile-cover {
-  background: #111;
+  position: relative;
   border-radius: 16px;
   height: 170px;
+  background: linear-gradient(120deg, #181818, #050505);
+  overflow: hidden;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+/* When a bannerUrl is present (inline style로 background-image 세팅) */
+.profile-cover.has-banner {
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+/* Optional subtle overlay on top of image */
+.profile-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+      rgba(0, 0, 0, 0.25) 0%,
+      rgba(0, 0, 0, 0.75) 100%);
+  pointer-events: none;
 }
 
 /* Edit Profile button */
@@ -2755,7 +2777,10 @@ img.jazzicon {
   padding: 0.45rem 1.1rem;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .profile-edit-btn:hover {
@@ -2783,6 +2808,7 @@ img.jazzicon {
   background: var(--bg-card);
   border-radius: 18px;
   padding: 1.5rem 1.75rem;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
 }
 
 .profile-content-offset {
@@ -2800,6 +2826,7 @@ img.jazzicon {
   align-items: center;
 }
 
+/* Avatar container: supports text-initial OR background-image */
 .profile-avatar {
   width: 72px;
   height: 72px;
@@ -2812,8 +2839,34 @@ img.jazzicon {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  position: relative;
+  text-transform: uppercase;
 }
 
+/* When we have an avatar image */
+.profile-avatar.has-image {
+  background: #000;
+  color: transparent;
+}
+
+/* img element used inside avatar when avatarUrl 존재 */
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
+/* When avatar를 background-image로 세팅하는 경우용 */
+.profile-avatar.has-image {
+  background-size: cover;
+  background-position: center center;
+}
+
+/* Main text */
 .profile-main-text {
   display: flex;
   flex-direction: column;
@@ -2861,8 +2914,11 @@ img.jazzicon {
   text-decoration: none;
   line-height: 1.2;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease,
-    transform 0.06s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.06s ease,
+    color 0.12s ease;
 }
 
 .profile-social-chip:hover {
@@ -2921,7 +2977,10 @@ img.jazzicon {
 .profile-user-cta-card {
   margin-top: 0.9rem;
   border-radius: 18px;
-  background: radial-gradient(circle at top left, #262626 0, #111 45%, #050505 100%);
+  background: radial-gradient(circle at top left,
+      #262626 0,
+      #111 45%,
+      #050505 100%);
   border: 1px solid rgba(244, 208, 63, 0.15);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
 }
@@ -2929,6 +2988,7 @@ img.jazzicon {
 .profile-user-cta-loading {
   font-size: 0.85rem;
   color: var(--text-secondary);
+  padding: 0.75rem 0.25rem;
 }
 
 /* Real content wrapper (when hydrated) */
@@ -2986,7 +3046,9 @@ img.jazzicon {
   align-items: center;
   gap: 0.4rem;
   box-shadow: 0 10px 30px rgba(0, 123, 255, 0.4);
-  transition: transform 0.12s ease, opacity 0.12s ease,
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease,
     box-shadow 0.12s ease;
 }
 
@@ -3036,6 +3098,15 @@ img.jazzicon {
 }
 
 /* ------------------------------------------------------------------
+ * Variants: profile inside modal
+ * ------------------------------------------------------------------ */
+
+.user-profile-modal-body .profile-wrapper {
+  /* 모달 안에서는 wrapper 자체가 이미 꽉 차 있으므로 padding 다소 줄여도 됨 */
+  padding: 1rem;
+}
+
+/* ------------------------------------------------------------------
  * Responsive tweaks
  * ------------------------------------------------------------------ */
 
@@ -3050,12 +3121,14 @@ img.jazzicon {
 
   .profile-cover {
     border-radius: 0 0 16px 16px;
+    height: 150px;
   }
 
   .profile-main-card {
     left: 12px;
     right: 12px;
     padding: 1.25rem 1.2rem;
+    top: 52px;
   }
 
   .profile-main {
@@ -4075,6 +4148,14 @@ ion-modal ion-content {
   justify-content: center;
   box-sizing: border-box;
 }
+
+.home-card-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+  display: block;
+}
 /* ===== 모달 공통 ===== */
 
 ion-modal.edit-profile-modal {
@@ -4776,39 +4857,38 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   --accent-teal: #006d75;
 }
 
-/* 전체 래퍼 */
+/* ====================== 공통 래이아웃 ====================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 .chat-wrapper {
   background: var(--bg-page);
   color: var(--text-primary);
-
-  /* 전체 화면에 꽉 차도록 */
   height: 100%;
   min-height: 0;
   padding: 0;
-
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  box-sizing: border-box;
-
   display: flex;
   justify-content: center;
 }
 
-/* 메인 쉘 (좌: 리스트 / 우: 채팅) */
 .chat-shell {
   width: 100%;
   max-width: 100%;
-  margin: 0;
-
   height: 100%;
   min-height: 0;
-
+  margin: 0;
   display: flex;
   border-radius: 0;
   overflow: hidden;
   background: #050505;
 }
 
-/* ---------------- 사이드바 (대화 목록) ---------------- */
+/* ====================== 사이드바 (채팅 목록) ====================== */
 
 .chat-sidebar {
   width: 320px;
@@ -4829,7 +4909,7 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   margin: 0 0 0.75rem;
 }
 
-/* 검색바 */
+/* 검색 */
 .chat-search {
   padding: 0 1.5rem 1rem;
 }
@@ -4845,7 +4925,7 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   font-size: 0.9rem;
 }
 
-/* 대화 리스트 */
+/* 쓰레드 리스트 */
 .chat-thread-list {
   flex: 1;
   overflow-y: auto;
@@ -4880,6 +4960,15 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   justify-content: center;
   font-weight: 600;
   font-size: 1.1rem;
+  overflow: hidden;
+}
+
+.chat-thread-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
 }
 
 .chat-thread-main {
@@ -4921,7 +5010,7 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   color: #777;
 }
 
-/* ---------------- 메인 채팅 영역 (데스크톱) ---------------- */
+/* ====================== 메인 채팅 영역 (데스크톱) ====================== */
 
 .chat-main {
   flex: 1;
@@ -4930,7 +5019,6 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   flex-direction: column;
 }
 
-/* 데스크톱에서만 보이는 패널 */
 .chat-main-desktop {
   display: flex;
   flex: 1;
@@ -4951,6 +5039,16 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   height: 44px;
   border-radius: 999px;
   background: #f0f0f0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.chat-main-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
 }
 
 .chat-main-meta {
@@ -4960,6 +5058,7 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
 
 .chat-main-name {
   font-weight: 600;
+  cursor: pointer;
 }
 
 .chat-main-status {
@@ -4967,7 +5066,8 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   color: #aaaaaa;
 }
 
-/* 메시지 리스트 */
+/* ====================== 메시지 리스트 ====================== */
+
 .chat-messages {
   flex: 1;
   padding: 1rem 1.75rem;
@@ -4978,10 +5078,12 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   min-height: 0;
 }
 
-/* 메시지 행 */
+/* 한 줄(한 메시지) */
 .chat-message-row {
   display: flex;
   align-items: flex-end;
+  gap: 0.5rem;
+  width: 100%;
 }
 
 .chat-message-row.other {
@@ -4992,13 +5094,60 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   justify-content: flex-end;
 }
 
+/* 보낸 사람 아바타 (상대방만 노출) */
+.chat-message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #222;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.chat-message-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
+}
+
+/* 말풍선+메타 감싸는 컨테이너 */
+.chat-message-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.chat-message-row.other .chat-message-content {
+  align-items: flex-start;
+}
+
+.chat-message-row.you .chat-message-content {
+  align-items: flex-end;
+}
+
 /* 말풍선 */
 .chat-message-bubble {
-  max-width: 60%;
   border-radius: 18px;
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
   line-height: 1.4;
+
+  /* 🔥 세로쓰기 강제로 막기 + 자연스러운 줄바꿈 */
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  white-space: pre-wrap;
+  /* \n 유지 + 자동 줄바꿈 */
+  word-break: break-word;
+  display: inline-block;
+  text-align: left;
 }
 
 .chat-message-bubble.other {
@@ -5011,15 +5160,16 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   color: #ffffff;
 }
 
-/* 메타 정보 (시간/작성자) */
+/* 시간 / 작성자 텍스트 */
 .chat-message-meta {
   font-size: 0.75rem;
   color: #888;
-  margin: 0 0.5rem;
+  margin-top: 0.25rem;
   white-space: nowrap;
 }
 
-/* 입력 영역 */
+/* ====================== 입력 영역 ====================== */
+
 .chat-input-bar {
   border-top: 1px solid #181818;
   padding: 0.75rem 1.5rem;
@@ -5073,7 +5223,7 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
   text-align: center;
 }
 
-/* ---------------- 모바일: 레이아웃 & 모달 ---------------- */
+/* ====================== 모바일 레이아웃 & 모달 ====================== */
 
 @media (max-width: 900px) {
   .chat-shell {
@@ -5082,7 +5232,6 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
     border-radius: 0;
   }
 
-  /* 🔥 모바일/태블릿에서는 목록이 전체 가로폭 차지 */
   .chat-sidebar {
     width: 100%;
     min-width: 0;
@@ -5091,18 +5240,16 @@ ion-modal.settings-modal ion-buttons[slot="end"] ion-button {
     border-bottom: 1px solid #181818;
   }
 
-  /* 데스크톱용 메인 패널 숨김 */
   .chat-main-desktop {
     display: none;
   }
 }
 
-/* 모달 내부 채팅 UI에도 동일 스타일 재사용 */
 .chat-main-modal {
   height: 100%;
 }
 
-/* ion-modal 자체에 대한 기본 커스터마이징 */
+/* ion-modal 스타일 */
 ion-modal.chat-room-modal {
   --background: #050505;
   --border-radius: 18px;
@@ -5258,6 +5405,7 @@ ion-modal.chat-room-modal {
   color: #000000;
 }
 
+/* 이름/역할 */
 .info {
   display: flex;
   flex-direction: column;
@@ -5669,6 +5817,16 @@ ion-modal.chat-room-modal {
   justify-content: center;
   font-weight: 700;
   font-size: 1.05rem;
+  overflow: hidden;
+}
+
+/* 프로필 이미지 */
+.notification-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+  display: block;
 }
 
 .notification-type-icon {

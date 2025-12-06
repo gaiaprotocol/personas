@@ -34,6 +34,7 @@ interface NotificationItemUI {
   type: NotificationVerbType;
   actorName: string;
   actorInitial: string;
+  actorAvatarUrl?: string; // ★ 추가: 프로필 이미지 URL
   verb: string;
   preview?: string | null;
   timeAgo: string;
@@ -77,6 +78,12 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
   const actorNickname =
     (meta.actorNickname as string | undefined) ||
     (meta.actor_name as string | undefined) ||
+    undefined;
+
+  const actorAvatarUrl =
+    (meta.actorAvatarUrl as string | undefined) ||
+    (meta.actorAvatar as string | undefined) ||
+    (meta.avatarUrl as string | undefined) ||
     undefined;
 
   const actorName = actorNickname ?? shortenAddress(n.actor);
@@ -219,6 +226,7 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
     type,
     actorName,
     actorInitial,
+    actorAvatarUrl,
     verb,
     preview: preview ?? undefined,
     timeAgo: formatTimeAgo(n.createdAt),
@@ -441,7 +449,17 @@ export class NotificationsTab {
     const typeVisual = mapTypeToVisual(item.type);
 
     // Left: avatar + type icon
-    const avatar = el('div.notification-avatar', item.actorInitial);
+    const avatar = el('div.notification-avatar') as HTMLElement;
+
+    if (item.actorAvatarUrl) {
+      const img = document.createElement('img');
+      img.src = item.actorAvatarUrl;
+      img.alt = item.actorName || 'Profile';
+      img.className = 'notification-avatar-img';
+      avatar.appendChild(img);
+    } else {
+      avatar.textContent = item.actorInitial;
+    }
 
     const typeIcon = el(
       'div.notification-type-icon',

@@ -42,10 +42,32 @@
   position: relative;
 }
 
+/* Cover (banner) */
 .profile-cover {
-  background: #111;
+  position: relative;
   border-radius: 16px;
   height: 170px;
+  background: linear-gradient(120deg, #181818, #050505);
+  overflow: hidden;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+/* When a bannerUrl is present (inline style로 background-image 세팅) */
+.profile-cover.has-banner {
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+/* Optional subtle overlay on top of image */
+.profile-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+      rgba(0, 0, 0, 0.25) 0%,
+      rgba(0, 0, 0, 0.75) 100%);
+  pointer-events: none;
 }
 
 /* Edit Profile button */
@@ -62,7 +84,10 @@
   padding: 0.45rem 1.1rem;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease,
+    box-shadow 0.12s ease;
 }
 
 .profile-edit-btn:hover {
@@ -90,6 +115,7 @@
   background: var(--bg-card);
   border-radius: 18px;
   padding: 1.5rem 1.75rem;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
 }
 
 .profile-content-offset {
@@ -107,6 +133,7 @@
   align-items: center;
 }
 
+/* Avatar container: supports text-initial OR background-image */
 .profile-avatar {
   width: 72px;
   height: 72px;
@@ -119,8 +146,34 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  position: relative;
+  text-transform: uppercase;
 }
 
+/* When we have an avatar image */
+.profile-avatar.has-image {
+  background: #000;
+  color: transparent;
+}
+
+/* img element used inside avatar when avatarUrl 존재 */
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  display: block;
+}
+
+/* When avatar를 background-image로 세팅하는 경우용 */
+.profile-avatar.has-image {
+  background-size: cover;
+  background-position: center center;
+}
+
+/* Main text */
 .profile-main-text {
   display: flex;
   flex-direction: column;
@@ -168,8 +221,11 @@
   text-decoration: none;
   line-height: 1.2;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease,
-    transform 0.06s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    transform 0.06s ease,
+    color 0.12s ease;
 }
 
 .profile-social-chip:hover {
@@ -228,7 +284,10 @@
 .profile-user-cta-card {
   margin-top: 0.9rem;
   border-radius: 18px;
-  background: radial-gradient(circle at top left, #262626 0, #111 45%, #050505 100%);
+  background: radial-gradient(circle at top left,
+      #262626 0,
+      #111 45%,
+      #050505 100%);
   border: 1px solid rgba(244, 208, 63, 0.15);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
 }
@@ -236,6 +295,7 @@
 .profile-user-cta-loading {
   font-size: 0.85rem;
   color: var(--text-secondary);
+  padding: 0.75rem 0.25rem;
 }
 
 /* Real content wrapper (when hydrated) */
@@ -293,7 +353,9 @@
   align-items: center;
   gap: 0.4rem;
   box-shadow: 0 10px 30px rgba(0, 123, 255, 0.4);
-  transition: transform 0.12s ease, opacity 0.12s ease,
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease,
     box-shadow 0.12s ease;
 }
 
@@ -343,6 +405,15 @@
 }
 
 /* ------------------------------------------------------------------
+ * Variants: profile inside modal
+ * ------------------------------------------------------------------ */
+
+.user-profile-modal-body .profile-wrapper {
+  /* 모달 안에서는 wrapper 자체가 이미 꽉 차 있으므로 padding 다소 줄여도 됨 */
+  padding: 1rem;
+}
+
+/* ------------------------------------------------------------------
  * Responsive tweaks
  * ------------------------------------------------------------------ */
 
@@ -357,12 +428,14 @@
 
   .profile-cover {
     border-radius: 0 0 16px 16px;
+    height: 150px;
   }
 
   .profile-main-card {
     left: 12px;
     right: 12px;
     padding: 1.25rem 1.2rem;
+    top: 52px;
   }
 
   .profile-main {

@@ -25,19 +25,21 @@ type Sender = 'you' | 'other';
 interface ViewChatMessage {
   id: number;
   sender: Sender;
-  author: string; // "You", "0x1234…abcd" etc
+  author: string; // 표시용 이름 (닉네임 or shortened address)
   text: string;
-  time: string;   // "2:45 PM"
+  time: string; // "2:45 PM"
+  avatarUrl: string | null;
   raw: PersonaChatMessage;
 }
 
 interface ChatThread {
-  id: string;             // UI id (persona address)
+  id: string; // UI id (persona address)
   personaAddress: string; // 0x...
   name: string;
   holdersInChat: number;
   unreadCount: number;
   avatarInitial: string;
+  avatarUrl?: string | null;
   messages: ViewChatMessage[];
 }
 
@@ -63,6 +65,7 @@ export class ChatTab {
   // Desktop chat area refs
   private mainNameEl!: HTMLElement;
   private mainStatusEl!: HTMLElement;
+  private headerAvatarEl!: HTMLElement;
   private messagesEl!: HTMLElement;
   private inputEl!: HTMLInputElement;
 
@@ -146,8 +149,7 @@ export class ChatTab {
     // On-chain holder check using contract read helper
     try {
       const balance = await getPersonaBalance(persona, user);
-      const isOwner =
-        persona.toLowerCase() === user.toLowerCase();
+      const isOwner = persona.toLowerCase() === user.toLowerCase();
 
       if (!isOwner && balance <= 0n) {
         showErrorAlert(
@@ -172,15 +174,20 @@ export class ChatTab {
 
     // If not present (e.g. backend index is stale), create a minimal thread
     if (!target) {
-      const avatarInitial = persona.slice(2, 3).toUpperCase();
+      const fallbackName = this.shortenAddress(persona);
+      const avatarInitial =
+        fallbackName.trim().charAt(0).toUpperCase() ||
+        persona.slice(2, 3).toUpperCase() ||
+        'P';
 
       target = {
         id: persona,
         personaAddress: persona,
-        name: this.shortenAddress(persona),
+        name: fallbackName,
         holdersInChat: 0, // unknown here, could be fetched later if needed
         unreadCount: 0,
         avatarInitial,
+        avatarUrl: null,
         messages: [],
       };
 
@@ -226,16 +233,23 @@ export class ChatTab {
 
       this.threads = holdings.map((h: PersonaFragmentHolding) => {
         const persona = h.personaAddress;
-        const name = this.shortenAddress(persona);
-        const avatarInitial = persona.slice(2, 3).toUpperCase();
+        const displayName =
+          (h as any).name || this.shortenAddress(persona); // 백엔드에 name 있으면 우선 사용
+        const avatarUrl = (h as any).avatarUrl ?? null;
+
+        const avatarInitial =
+          displayName.trim().charAt(0).toUpperCase() ||
+          persona.slice(2, 3).toUpperCase() ||
+          'P';
 
         return {
           id: persona,
           personaAddress: persona,
-          name,
+          name: displayName,
           holdersInChat: h.holderCount,
           unreadCount: 0,
           avatarInitial,
+          avatarUrl,
           messages: [],
         };
       });
@@ -251,16 +265,20 @@ export class ChatTab {
         );
 
         if (!exists) {
-          const name = this.shortenAddress(normalizedMy);
-          const avatarInitial = normalizedMy.slice(2, 3).toUpperCase();
+          const displayName = this.shortenAddress(normalizedMy);
+          const avatarInitial =
+            displayName.trim().charAt(0).toUpperCase() ||
+            normalizedMy.slice(2, 3).toUpperCase() ||
+            'P';
 
           const myThread: ChatThread = {
             id: normalizedMy,
             personaAddress: normalizedMy,
-            name,
+            name: displayName,
             holdersInChat: 0,
             unreadCount: 0,
             avatarInitial,
+            avatarUrl: null,
             messages: [],
           };
 
@@ -347,10 +365,22 @@ export class ChatTab {
     this.threadListEl.innerHTML = '';
 
     this.filteredThreads.forEach((thread) => {
+      const avatarEl = el('div.chat-thread-avatar') as HTMLElement;
+
+      if (thread.avatarUrl) {
+        const img = el('img.chat-thread-avatar-img', {
+          src: thread.avatarUrl,
+          alt: thread.name || 'Persona',
+        }) as HTMLImageElement;
+        avatarEl.append(img);
+      } else {
+        avatarEl.textContent = thread.avatarInitial;
+      }
+
       const item = el(
         'div.chat-thread-item',
         { 'data-id': thread.id },
-        el('div.chat-thread-avatar', thread.avatarInitial),
+        avatarEl,
         el(
           'div.chat-thread-main',
           el('div.chat-thread-name', thread.name),
@@ -390,8 +420,7 @@ export class ChatTab {
 
     this.currentThread = thread;
     this.renderThreadList();
-    this.mainNameEl.textContent = thread.name;
-    this.mainStatusEl.textContent = `${thread.holdersInChat} holders online`;
+    this.updateDesktopHeader(thread);
 
     await this.loadMessagesForThread(thread);
     this.renderMessagesInto(thread, this.messagesEl);
@@ -414,8 +443,10 @@ export class ChatTab {
         const senderType: Sender =
           lowerMy && m.sender.toLowerCase() === lowerMy ? 'you' : 'other';
 
-        const author =
-          senderType === 'you' ? 'You' : this.shortenAddress(m.sender);
+        const profile = m.senderProfile;
+        const displayName =
+          profile?.nickname?.trim() || this.shortenAddress(m.sender);
+        const avatarUrl = profile?.avatarUrl ?? null;
 
         const time = new Date(m.createdAt * 1000).toLocaleTimeString([], {
           hour: 'numeric',
@@ -425,9 +456,10 @@ export class ChatTab {
         return {
           id: m.id,
           sender: senderType,
-          author,
+          author: senderType === 'you' ? 'You' : displayName,
           text: m.content,
           time,
+          avatarUrl,
           raw: m,
         };
       });
@@ -448,14 +480,14 @@ export class ChatTab {
   private buildDesktopMain(): HTMLElement {
     const main = el('div.chat-main.chat-main-desktop');
 
-    const avatar = el('div.chat-main-avatar');
+    this.headerAvatarEl = el('div.chat-main-avatar') as HTMLElement;
 
     this.mainNameEl = el('a.chat-main-name', { href: '#' }) as HTMLAnchorElement;
     this.mainStatusEl = el('div.chat-main-status');
 
     const header = el(
       'div.chat-main-header',
-      avatar,
+      this.headerAvatarEl,
       el('div.chat-main-meta', this.mainNameEl, this.mainStatusEl),
     );
 
@@ -493,11 +525,27 @@ export class ChatTab {
     return main;
   }
 
+  private updateDesktopHeader(thread: ChatThread) {
+    this.mainNameEl.textContent = thread.name;
+    this.mainStatusEl.textContent = `${thread.holdersInChat} holders online`;
+
+    if (!this.headerAvatarEl) return;
+
+    this.headerAvatarEl.innerHTML = '';
+    if (thread.avatarUrl) {
+      const img = el('img.chat-main-avatar-img', {
+        src: thread.avatarUrl,
+        alt: thread.name || 'Persona',
+      }) as HTMLImageElement;
+      this.headerAvatarEl.append(img);
+    } else {
+      this.headerAvatarEl.textContent = thread.avatarInitial;
+    }
+  }
+
   private renderCurrentThread() {
     if (!this.currentThread) return;
-    this.mainNameEl.textContent = this.currentThread.name;
-    this.mainStatusEl.textContent = `${this.currentThread.holdersInChat} holders online`;
-
+    this.updateDesktopHeader(this.currentThread);
     this.renderMessagesInto(this.currentThread, this.messagesEl);
   }
 
@@ -510,6 +558,25 @@ export class ChatTab {
         { class: `chat-message-row ${m.sender}` },
       );
 
+      // 아바타 (상대방 메시지일 때만 노출)
+      let avatarEl: HTMLElement | null = null;
+      if (m.sender === 'other') {
+        avatarEl = el('div.chat-message-avatar') as HTMLElement;
+        if (m.avatarUrl) {
+          const img = el('img.chat-message-avatar-img', {
+            src: m.avatarUrl,
+            alt: m.author || 'User',
+          }) as HTMLImageElement;
+          avatarEl.append(img);
+        } else {
+          // 아바타 없으면 이모지/이니셜 등으로 대체하고 싶다면 여기서 처리
+          avatarEl.textContent =
+            m.author && m.author.length > 0
+              ? m.author.charAt(0).toUpperCase()
+              : '?';
+        }
+      }
+
       const bubble = el(
         'div.chat-message-bubble',
         { class: `chat-message-bubble ${m.sender}` },
@@ -521,10 +588,17 @@ export class ChatTab {
         m.sender === 'you' ? `You  ${m.time}` : `${m.author}  ${m.time}`,
       );
 
+      const contentWrap = el(
+        'div.chat-message-content',
+        bubble,
+        meta,
+      );
+
       if (m.sender === 'other') {
-        row.append(meta, bubble);
+        if (avatarEl) row.append(avatarEl, contentWrap);
+        else row.append(contentWrap);
       } else {
-        row.append(bubble, meta);
+        row.append(contentWrap);
       }
 
       container.append(row);
@@ -571,15 +645,19 @@ export class ChatTab {
         this.ws.readyState === WebSocket.OPEN;
 
       if (!wsOpen) {
-        // fallback: 서버 응답을 바로 반영
         const myAddr = tokenManager.getAddress?.();
         const senderType: Sender =
           myAddr && msg.sender.toLowerCase() === myAddr.toLowerCase()
             ? 'you'
             : 'other';
 
+        const profile = msg.senderProfile;
+        const displayName =
+          profile?.nickname?.trim() || this.shortenAddress(msg.sender);
+        const avatarUrl = profile?.avatarUrl ?? null;
+
         const author =
-          senderType === 'you' ? 'You' : this.shortenAddress(msg.sender);
+          senderType === 'you' ? 'You' : displayName;
 
         const time = new Date(msg.createdAt * 1000).toLocaleTimeString([], {
           hour: 'numeric',
@@ -592,6 +670,7 @@ export class ChatTab {
           author,
           text: msg.content,
           time,
+          avatarUrl,
           raw: msg,
         };
 
@@ -708,8 +787,13 @@ export class ChatTab {
         ? 'you'
         : 'other';
 
+    const profile = msg.senderProfile;
+    const displayName =
+      profile?.nickname?.trim() || this.shortenAddress(msg.sender);
+    const avatarUrl = profile?.avatarUrl ?? null;
+
     const author =
-      senderType === 'you' ? 'You' : this.shortenAddress(msg.sender);
+      senderType === 'you' ? 'You' : displayName;
 
     const time = new Date(msg.createdAt * 1000).toLocaleTimeString([], {
       hour: 'numeric',
@@ -722,6 +806,7 @@ export class ChatTab {
       author,
       text: msg.content,
       time,
+      avatarUrl,
       raw: msg,
     };
 
@@ -788,7 +873,19 @@ export class ChatTab {
 
     const mobileMain = el('div.chat-main.chat-main-modal');
 
-    const avatar = el('div.chat-main-avatar');
+    const avatar = el('div.chat-main-avatar') as HTMLElement;
+
+    // 모바일 헤더 아바타에도 이미지 적용
+    avatar.innerHTML = '';
+    if (thread.avatarUrl) {
+      const img = el('img.chat-main-avatar-img', {
+        src: thread.avatarUrl,
+        alt: thread.name || 'Persona',
+      }) as HTMLImageElement;
+      avatar.append(img);
+    } else {
+      avatar.textContent = thread.avatarInitial;
+    }
 
     const nameEl = el('div.chat-main-name', thread.name);
     const statusEl = el(

@@ -86,6 +86,7 @@ export function rowToPersonaFragmentHolding(
 export type TrendingPersonaFragment = {
   personaAddress: `0x${string}`;
   name: string;
+  avatarUrl: string | null;
   currentSupply: string;
   holderCount: number;
   lastPrice: string;

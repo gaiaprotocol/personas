@@ -3,6 +3,7 @@ import './edit-profile.css';
 
 import { Profile, SocialLinks } from '../../shared/types/profile';
 import { fetchMyProfile, saveMyProfile } from '../api/profile';
+import { uploadImage } from '../api/upload';
 import { profileManager } from '../services/profile-manager';
 
 /* ===== 타입 정의 ===== */
@@ -39,7 +40,6 @@ const readFileAsDataUrl = (file: File): Promise<string> =>
 /**
  * 서버에서 내 프로필 받아오기
  *  - /my-profile 응답을 Profile로 가정
- *  - 아직 백엔드에 배너 컬럼이 없으므로 bannerUrl은 null로 강제
  */
 async function fetchProfile(
   _address: `0x${string}`,
@@ -57,35 +57,38 @@ async function fetchProfile(
     nickname: res.nickname ?? null,
     bio: res.bio ?? null,
     socialLinks: res.socialLinks ?? null,
-    bannerUrl: null, // 아직 백엔드에 배너 컬럼이 없으므로
+    bannerUrl: res.bannerUrl ?? null,
     avatarUrl: res.avatarUrl ?? null,
   };
 }
 
 /**
  * 실제 저장 로직
- *  - nickname / bio / social_links 를 /set-profile 로 전송
- *  - avatar/banner 파일은 아직 업로드 엔드포인트 정보가 없어서 payload에는 넣지 않음
+ *  - nickname / bio / social_links / avatarUrl / bannerUrl 를 /set-profile 로 전송
+ *  - 파일은 여기서 관여하지 않고, 이미 uploadImage로 업로드된 URL만 전달
  */
 async function setProfile(
   payload: {
     nickname: string;
     bio: string;
     socialLinks: SocialLinks;
-    bannerImageFile?: File;
-    avatarImageFile?: File;
+    avatarUrl: string | null;
+    bannerUrl: string | null;
   },
   token: string,
 ): Promise<void> {
-  const { nickname, bio, socialLinks } = payload;
+  const { nickname, bio, socialLinks, avatarUrl, bannerUrl } = payload;
 
+  // saveMyProfile의 SaveProfileInput 구조에 맞게 그대로 전달
   const body: Record<string, unknown> = {
     nickname,
     bio,
     socialLinks,
+    avatarUrl,
+    bannerUrl,
   };
 
-  await saveMyProfile(body, token);
+  await saveMyProfile(body as any, token);
 }
 
 /* SocialLinkInput[] -> SocialLinks 로 변환 */
@@ -144,7 +147,7 @@ const socialsEqual = (
 export function createEditProfileModal(address: string, token: string) {
   const modal = el('ion-modal.edit-profile-modal') as HTMLIonModalElement;
 
-  /* ---------- 숨겨진 파일 인풋 (프리뷰 전용) ---------- */
+  /* ---------- 숨겨진 파일 인풋 (프리뷰 + 업로드용) ---------- */
 
   const bannerFileInput = el('input', {
     type: 'file',
@@ -331,7 +334,7 @@ export function createEditProfileModal(address: string, token: string) {
     'div.edit-profile-social-list',
   ) as HTMLDivElement;
 
-  // [NEW] 소셜 링크 순서 변경 함수
+  // 소셜 링크 순서 변경 함수
   const moveSocialLink = (id: string, direction: 'up' | 'down') => {
     const index = socialLinkInputs.findIndex((l) => l.id === id);
     if (index === -1) return;
@@ -352,7 +355,6 @@ export function createEditProfileModal(address: string, token: string) {
       link.label || `Link ${index + 1}`,
     ) as HTMLDivElement;
 
-    // [NEW] 위/아래 이동 버튼
     const moveUpBtn = el(
       'ion-button',
       {
@@ -713,7 +715,7 @@ export function createEditProfileModal(address: string, token: string) {
       };
 
       socialLinkInputs = [];
-      originalSocialInputs = []; // 원본도 빈 배열로 초기화
+      originalSocialInputs = [];
       addLink();
 
       originalBannerUrl = null;
@@ -736,7 +738,6 @@ export function createEditProfileModal(address: string, token: string) {
 
     const nickname = ((nicknameInput.value ?? '') as string).trim();
     const bio = ((bioInput.value ?? '') as string).trim();
-
     const cleanSocials: SocialLinks = socialInputsToRecord(socialLinkInputs);
 
     const prevLabel = saveBtn.textContent;
@@ -745,13 +746,26 @@ export function createEditProfileModal(address: string, token: string) {
     saveBtn.append(spinner);
 
     try {
+      // 1) 아바타 / 배너 파일이 변경된 경우 업로드해서 URL 획득
+      let avatarUrlToSave: string | null = originalAvatarUrl;
+      let bannerUrlToSave: string | null = originalBannerUrl;
+
+      if (newAvatarFile) {
+        avatarUrlToSave = await uploadImage(newAvatarFile, 'avatar', token);
+      }
+
+      if (newBannerFile) {
+        bannerUrlToSave = await uploadImage(newBannerFile, 'banner', token);
+      }
+
+      // 2) /set-profile 호출 (URL만 전달)
       await setProfile(
         {
           nickname,
           bio,
           socialLinks: cleanSocials,
-          bannerImageFile: newBannerFile || undefined,
-          avatarImageFile: newAvatarFile || undefined,
+          avatarUrl: avatarUrlToSave,
+          bannerUrl: bannerUrlToSave,
         },
         token,
       );

@@ -136,6 +136,7 @@
   color: #000000;
 }
 
+/* 이름/역할 */
 .info {
   display: flex;
   flex-direction: column;

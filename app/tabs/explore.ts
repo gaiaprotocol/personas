@@ -12,10 +12,13 @@ import {
 type SortKey = ExploreSortKey;
 
 interface PersonaData {
-  id: string;                // personaAddress
+  id: string; // personaAddress
   name: string;
   role: string;
   verified?: boolean;
+
+  // 새로 추가: 아바타 이미지 URL
+  avatarUrl?: string | null;
 
   priceEth: number;
   priceLabel: string;
@@ -198,7 +201,10 @@ export class ExploreTab {
       id: p.personaAddress,
       name: p.name || p.personaAddress,
       role: 'On-chain Persona', // 나중에 프로필 정보로 대체 가능
-      verified: false,          // 필요하다면 profile 플래그 반영
+      verified: false, // 필요하다면 profile 플래그 반영
+
+      // 여기서 avatarUrl 매핑
+      avatarUrl: p.avatarUrl,
 
       priceEth,
       priceLabel,
@@ -288,6 +294,19 @@ export class ExploreTab {
     }
 
     data.forEach((p) => {
+      // 아바타 엘리먼트: 이미지 있으면 image, 없으면 initials
+      const avatarEl = p.avatarUrl
+        ? el('sl-avatar', {
+          image: p.avatarUrl,
+          shape: 'circle',
+          label: p.name,
+        })
+        : el('sl-avatar', {
+          initials: p.name[0] || 'P',
+          shape: 'circle',
+          label: p.name,
+        });
+
       const row = el(
         'div.persona-row',
         { 'data-id': p.id },
@@ -295,10 +314,7 @@ export class ExploreTab {
         // 왼쪽: 아바타 + 이름/역할
         el(
           'div.row-left',
-          el(
-            'div.avatar-wrapper',
-            el('sl-avatar', { initials: p.name[0] || 'P', shape: 'circle' }),
-          ),
+          el('div.avatar-wrapper', avatarEl),
           el(
             'div.info',
             el(
