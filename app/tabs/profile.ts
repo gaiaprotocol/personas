@@ -1,7 +1,7 @@
 import { el } from '@webtaku/el';
 import { formatEther, getAddress } from 'viem';
 
-import { tokenManager, wagmiConfig } from '@gaiaprotocol/client-common';
+import { createJazzicon, tokenManager, wagmiConfig } from '@gaiaprotocol/client-common';
 import { watchContractEvent } from 'wagmi/actions';
 
 import { PersonaFragments } from '../../shared/types/persona-fragments';
@@ -40,6 +40,10 @@ export class ProfileTab {
 
     this.navigate = navigate;
     this.setupInternalLinks();
+
+    // 아바타를 Jazzicon 기반으로 교체
+    this.applyProfileAvatar(profile);
+    this.applyPostCardAvatars(posts);
 
     // 프로필 내 포스트 카드 클릭 → 상세/모달
     this.setupPostCardClicks();
@@ -80,6 +84,87 @@ export class ProfileTab {
     });
   }
 
+  /** 프로필 메인 아바타를 Jazzicon으로 교체 */
+  private applyProfileAvatar(profile: Profile) {
+    const container = this.el.querySelector<HTMLElement>('.profile-avatar');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    if (profile.avatarUrl) {
+      const img = document.createElement('img');
+      img.src = profile.avatarUrl;
+      img.alt = profile.nickname || 'Profile';
+      img.className = 'profile-avatar-img';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      container.appendChild(img);
+      return;
+    }
+
+    if (profile.account && profile.account.startsWith('0x')) {
+      const jazz = createJazzicon(profile.account as `0x${string}`);
+      (jazz as HTMLElement).style.width = '100%';
+      (jazz as HTMLElement).style.height = '100%';
+      container.appendChild(jazz as HTMLElement);
+      return;
+    }
+
+    // 주소가 아니면 이니셜
+    const initial =
+      profile.nickname?.trim().charAt(0).toUpperCase() ??
+      profile.account.trim().charAt(0).toUpperCase() ??
+      'P';
+    container.textContent = initial;
+  }
+
+  /** Recent Posts 카드 내 각 포스트 아바타를 Jazzicon으로 교체 */
+  private applyPostCardAvatars(posts: PersonaPost[]) {
+    if (!posts.length) return;
+
+    const postMap = new Map<number, PersonaPost>();
+    posts.forEach((p) => postMap.set(p.id, p));
+
+    const cards = this.el.querySelectorAll<HTMLElement>('[data-hook="post-card"]');
+
+    cards.forEach((card) => {
+      const idAttr = card.getAttribute('data-post-id');
+      if (!idAttr) return;
+
+      const postId = Number(idAttr);
+      if (!Number.isFinite(postId) || postId <= 0) return;
+
+      const post = postMap.get(postId);
+      if (!post) return;
+
+      const avatar = card.querySelector<HTMLElement>('.post-card-avatar');
+      if (!avatar) return;
+
+      // 서버에서 avatarUrl 이미지가 이미 들어있다면 그대로 둔다
+      if (avatar.querySelector('img')) return;
+
+      avatar.innerHTML = '';
+
+      if (post.authorAvatarUrl) {
+        const img = document.createElement('img');
+        img.src = post.authorAvatarUrl;
+        img.alt = post.authorNickname || 'Profile';
+        img.className = 'post-card-avatar-img';
+        avatar.appendChild(img);
+      } else if (post.author && post.author.startsWith('0x')) {
+        const jazz = createJazzicon(post.author as `0x${string}`);
+        (jazz as HTMLElement).style.width = '100%';
+        (jazz as HTMLElement).style.height = '100%';
+        avatar.appendChild(jazz as HTMLElement);
+      } else {
+        const initial =
+          (post.authorNickname || 'U').trim().charAt(0).toUpperCase() || 'U';
+        avatar.textContent = initial;
+      }
+    });
+  }
+
   /**
    * 프로필의 "Recent Posts" 카드 내 포스트 클릭 처리
    * - 데스크탑: /post/:id 로 navigate
@@ -98,8 +183,6 @@ export class ProfileTab {
       card.addEventListener('click', (event) => {
         const target = event.target as HTMLElement | null;
 
-        // 카드 안의 개별 버튼(댓글/리포스트/좋아요/더보기)을 눌렀을 때는
-        // 카드 네비게이션을 막고, 각 버튼의 핸들러가 동작하게 둠.
         if (
           target &&
           target.closest(
@@ -141,12 +224,10 @@ export class ProfileTab {
     const tradeContainer = document.createElement('section');
     tradeContainer.setAttribute('data-role', 'trade-panel-root');
 
-    // 순서: connectCard → statsRow → tradeContainer → userFragmentCta → postsCard
     statsRow.insertAdjacentElement('afterend', tradeContainer);
 
     const personaAddress = profile.account as Address;
 
-    // tokenManager 에서 현재 지갑 주소를 trader 로 사용
     const getTraderAddress = () => {
       const addr = tokenManager.getAddress?.();
       return addr && addr.startsWith('0x') ? (addr as Address) : null;
@@ -157,7 +238,6 @@ export class ProfileTab {
       getTraderAddress,
       onTraded: () => {
         console.log('[ProfileTab] trade completed for', personaAddress);
-        // 내가 트레이드한 경우 즉시 stats / CTA 갱신
         this.loadOnchainStats(profile).catch((err) => {
           console.error('[ProfileTab] loadOnchainStats after trade error', err);
         });

@@ -2,6 +2,7 @@ import '@shoelace-style/shoelace';
 import { el } from '@webtaku/el';
 import './explore.css';
 
+import { createJazzicon } from '@gaiaprotocol/client-common';
 import { formatEther } from 'viem';
 import type { TrendingPersonaFragment } from '../../shared/types/persona-fragments';
 import {
@@ -17,7 +18,6 @@ interface PersonaData {
   role: string;
   verified?: boolean;
 
-  // 새로 추가: 아바타 이미지 URL
   avatarUrl?: string | null;
 
   priceEth: number;
@@ -31,6 +31,22 @@ interface PersonaData {
 
   changePct24h: number | null;
   changeLabel: string;
+}
+
+function shortenEthAddress(addr: string, head = 6, tail = 4) {
+  if (!addr || addr.length <= head + tail) return addr;
+  return `${addr.slice(0, head)}...${addr.slice(-tail)}`;
+}
+
+function normalizePersonaName(name: string | null | undefined, addr: string): string {
+  const base = name?.trim();
+  if (base && base.length > 0) {
+    if (base.startsWith('0x') && base.length > 10) {
+      return shortenEthAddress(base);
+    }
+    return base;
+  }
+  return shortenEthAddress(addr);
 }
 
 export class ExploreTab {
@@ -51,14 +67,12 @@ export class ExploreTab {
 
     this.el = el('section.explore-wrapper');
 
-    // 헤더
     const header = el(
       'div.explore-header',
       el('h2', 'Explore Personas'),
       el('p', 'Discover and invest in unique digital identities'),
     );
 
-    // 검색바
     const search = el(
       'div.explore-search',
       el(
@@ -84,7 +98,6 @@ export class ExploreTab {
       searchInput.addEventListener('sl-clear', () => this.handleSearch(''));
     }
 
-    // 탭 그룹
     const tabs = el(
       'sl-tab-group.explore-tabs',
       el('sl-tab', { slot: 'nav', panel: 'trending', active: true }, 'Trending'),
@@ -104,10 +117,8 @@ export class ExploreTab {
       void this.loadData(sortKey);
     });
 
-    // 리스트 컨테이너
     this.listEl = el('div.explore-list');
 
-    // 카운트
     const countEl = el(
       'div.explore-count',
       el('span', 'Loading personas...'),
@@ -117,11 +128,8 @@ export class ExploreTab {
 
     this.el.append(header, controls, this.listEl);
 
-    // 초기 로딩: trending 기준
     void this.loadData('trending');
   }
-
-  /* ---------- 데이터 로드 ---------- */
 
   private async loadData(sort: SortKey) {
     if (this.isLoading) return;
@@ -135,12 +143,9 @@ export class ExploreTab {
       '<div style="padding:0.75rem; font-size:0.9rem; color:#888;">Loading personas...</div>';
 
     try {
-      // Explore 화면이니 최대 100개 정도만
       const { personas } = await fetchTrendingPersonaFragments(100, sort);
 
       this.personas = personas.map((p) => this.fromTrendingFragment(p));
-
-      // 현재 검색어가 있으면 즉시 필터 적용
       this.applySearchFilter();
       this.applySortAndRender();
       this.updateCount();
@@ -156,7 +161,6 @@ export class ExploreTab {
   }
 
   private fromTrendingFragment(p: TrendingPersonaFragment): PersonaData {
-    // price (wei → ETH)
     let priceEth = 0;
     let priceLabel = '-';
     try {
@@ -170,7 +174,6 @@ export class ExploreTab {
       // ignore
     }
 
-    // 24h volume
     let volumeEth = 0;
     let volumeLabel = '0 ETH';
     try {
@@ -190,37 +193,30 @@ export class ExploreTab {
       // ignore
     }
 
-    // 24h change
     const changePct = p.change24hPct ?? null;
     const changeLabel =
       changePct === null || Number.isNaN(changePct)
         ? '—'
         : `${changePct > 0 ? '+' : ''}${changePct.toFixed(2)}%`;
 
+    const name = normalizePersonaName(p.name, p.personaAddress);
+
     return {
       id: p.personaAddress,
-      name: p.name || p.personaAddress,
-      role: 'On-chain Persona', // 나중에 프로필 정보로 대체 가능
-      verified: false, // 필요하다면 profile 플래그 반영
-
-      // 여기서 avatarUrl 매핑
-      avatarUrl: p.avatarUrl,
-
+      name,
+      role: 'On-chain Persona',
+      verified: false,
+      avatarUrl: p.avatarUrl ?? null,
       priceEth,
       priceLabel,
-
       holders: p.holderCount,
       holdersLabel: p.holderCount.toLocaleString(),
-
       volumeEth24h: volumeEth,
       volumeLabel,
-
       changePct24h: changePct,
       changeLabel,
     };
   }
-
-  /* ---------- 검색 ---------- */
 
   private handleSearch(raw: string) {
     this.currentQuery = raw.toLowerCase().trim();
@@ -249,8 +245,6 @@ export class ExploreTab {
       countEl.textContent = `${this.filtered.length} personas found`;
     }
   }
-
-  /* ---------- 정렬 + 렌더 ---------- */
 
   private applySortAndRender() {
     const data = [...this.filtered];
@@ -294,27 +288,31 @@ export class ExploreTab {
     }
 
     data.forEach((p) => {
-      // 아바타 엘리먼트: 이미지 있으면 image, 없으면 initials
-      const avatarEl = p.avatarUrl
-        ? el('sl-avatar', {
-          image: p.avatarUrl,
-          shape: 'circle',
-          label: p.name,
-        })
-        : el('sl-avatar', {
-          initials: p.name[0] || 'P',
-          shape: 'circle',
-          label: p.name,
-        });
+      const avatarWrapper = el('div.avatar-wrapper') as HTMLElement;
+
+      if (p.avatarUrl) {
+        const img = el('img', {
+          src: p.avatarUrl,
+          alt: p.name || 'Persona',
+          class: 'explore-avatar-img',
+        }) as HTMLImageElement;
+        avatarWrapper.appendChild(img);
+      } else if (p.id && p.id.startsWith('0x')) {
+        const jazz = createJazzicon(p.id as `0x${string}`);
+        (jazz as HTMLElement).style.width = '100%';
+        (jazz as HTMLElement).style.height = '100%';
+        avatarWrapper.appendChild(jazz as HTMLElement);
+      } else {
+        const initial = p.name?.trim().charAt(0).toUpperCase() || 'P';
+        avatarWrapper.textContent = initial;
+      }
 
       const row = el(
         'div.persona-row',
         { 'data-id': p.id },
-
-        // 왼쪽: 아바타 + 이름/역할
         el(
           'div.row-left',
-          el('div.avatar-wrapper', avatarEl),
+          avatarWrapper,
           el(
             'div.info',
             el(
@@ -330,8 +328,6 @@ export class ExploreTab {
             el('span.role', p.role),
           ),
         ),
-
-        // 오른쪽: 스탯
         el(
           'div.row-right',
           this.createStatCol('Price', p.priceLabel, 'highlight'),

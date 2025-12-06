@@ -21,9 +21,12 @@ export function profile(
   posts: PersonaPost[],
   personaFragments: PersonaFragments | null,
 ) {
+  const nickname = profile.nickname?.trim();
   const displayName =
-    profile.nickname && profile.nickname.trim().length > 0
-      ? profile.nickname.trim()
+    nickname && nickname.length > 0
+      ? nickname.startsWith('0x')
+        ? shortenAddress(nickname)
+        : nickname
       : shortenAddress(profile.account);
 
   const bio =
@@ -148,7 +151,14 @@ export function profile(
     'section.profile-card.profile-main-card',
     b(
       'div.profile-main',
-      b('div.profile-avatar', avatarChildren),
+      // data-address를 심어두면 클라이언트에서 Jazzicon으로 교체 가능
+      b(
+        'div.profile-avatar',
+        {
+          'data-address': profile.account,
+        } as any,
+        avatarChildren,
+      ),
       b('div.profile-main-text', ...profileMainTextChildren),
     ),
   );

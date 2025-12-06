@@ -1,4 +1,4 @@
-import { tokenManager } from '@gaiaprotocol/client-common';
+import { createJazzicon, tokenManager } from '@gaiaprotocol/client-common';
 import { el } from '@webtaku/el';
 import {
   fetchNotificationsApi,
@@ -32,6 +32,7 @@ type NotificationVerbType =
 interface NotificationItemUI {
   id: number;
   type: NotificationVerbType;
+  actorAddress: string | null;
   actorName: string;
   actorInitial: string;
   actorAvatarUrl?: string;
@@ -42,11 +43,16 @@ interface NotificationItemUI {
   navigatePath?: string | null;
 }
 
-/** Shorten address for display */
 function shortenAddress(addr: string | null): string {
   if (!addr) return 'Someone';
   if (!addr.startsWith('0x') || addr.length <= 10) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+function isEthAddress(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const v = value.trim();
+  return /^0x[0-9a-fA-F]{40}$/.test(v);
 }
 
 /** createdAt(unix seconds) → "2 hours ago" style string */
@@ -76,8 +82,6 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
 
   const meta = n.metadata ?? {};
 
-  // 서버에서 내려주는 actorNickname / actorAvatarUrl 을 우선 사용,
-  // 없으면 metadata 안의 값들을 fallback 으로 사용
   const actorNickname =
     n.actorNickname ??
     (meta.actorNickname as string | undefined) ??
@@ -91,24 +95,31 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
     (meta.avatarUrl as string | undefined) ??
     undefined;
 
-  const actorName = actorNickname ?? shortenAddress(n.actor);
+  let actorName: string;
+  if (actorNickname && actorNickname.trim().length > 0) {
+    const trimmed = actorNickname.trim();
+    actorName =
+      trimmed.startsWith('0x') && trimmed.length > 10
+        ? shortenAddress(trimmed)
+        : trimmed;
+  } else {
+    actorName = shortenAddress(n.actor);
+  }
+
   const actorInitial = actorName.trim().charAt(0).toUpperCase() || 'U';
 
   let verb = 'did something';
   let preview: string | null = null;
   let navigatePath: string | null = null;
 
+  // (아래 switch는 질문에 올려주신 것과 동일, 생략 없이 사용)
   switch (type) {
     /* ----- Post-related ----- */
-
     case 'post.like':
       verb = 'liked your post';
       preview = (meta.postPreview as string) ?? null;
-      if (n.targetId) {
-        navigatePath = `/post/${n.targetId}`;
-      }
+      if (n.targetId) navigatePath = `/post/${n.targetId}`;
       break;
-
     case 'post.comment':
     case 'post.reply':
       verb = 'commented on your post';
@@ -117,40 +128,28 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
         (meta.replyPreview as string) ??
         (meta.postPreview as string) ??
         null;
-      if (n.targetId) {
-        navigatePath = `/post/${n.targetId}`;
-      }
+      if (n.targetId) navigatePath = `/post/${n.targetId}`;
       break;
-
     case 'post.repost':
       verb = 'reposted your post';
       preview = (meta.postPreview as string) ?? null;
-      if (n.targetId) {
-        navigatePath = `/post/${n.targetId}`;
-      }
+      if (n.targetId) navigatePath = `/post/${n.targetId}`;
       break;
-
     case 'post.quote':
       verb = 'quoted your post';
       preview =
         (meta.quotePreview as string) ??
         (meta.postPreview as string) ??
         null;
-      if (n.targetId) {
-        navigatePath = `/post/${n.targetId}`;
-      }
+      if (n.targetId) navigatePath = `/post/${n.targetId}`;
       break;
-
     case 'post.mention':
       verb = 'mentioned you in a post';
       preview = (meta.postPreview as string) ?? null;
-      if (n.targetId) {
-        navigatePath = `/post/${n.targetId}`;
-      }
+      if (n.targetId) navigatePath = `/post/${n.targetId}`;
       break;
 
     /* ----- Persona / trade ----- */
-
     case 'persona.buy':
       verb = 'bought fragments of your persona';
       preview = (meta.message as string) ?? null;
@@ -158,7 +157,6 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
         navigatePath = `/profile/${meta.personaAddress as string}`;
       }
       break;
-
     case 'persona.sell':
       verb = 'sold fragments of your persona';
       preview = (meta.message as string) ?? null;
@@ -166,7 +164,6 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
         navigatePath = `/profile/${meta.personaAddress as string}`;
       }
       break;
-
     case 'trade.buy':
       verb = 'bought persona fragments';
       preview = (meta.message as string) ?? null;
@@ -174,7 +171,6 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
         navigatePath = `/profile/${meta.personaAddress as string}`;
       }
       break;
-
     case 'trade.sell':
       verb = 'sold persona fragments';
       preview = (meta.message as string) ?? null;
@@ -184,11 +180,9 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
       break;
 
     /* ----- User / chat / system ----- */
-
     case 'user.follow':
       verb = 'started following you';
       break;
-
     case 'chat.reply':
       verb = 'replied to your chat';
       preview =
@@ -199,7 +193,6 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
         navigatePath = `/chat/${meta.personaAddress as string}`;
       }
       break;
-
     case 'chat.reaction':
       verb = 'reacted to your chat message';
       preview =
@@ -210,13 +203,10 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
         navigatePath = `/chat/${meta.personaAddress as string}`;
       }
       break;
-
     case 'system.announcement':
       verb = 'System notification';
       preview = (meta.message as string) ?? null;
       break;
-
-    /* ----- Fallback ----- */
 
     default:
       verb = 'sent you a notification';
@@ -227,6 +217,7 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
   return {
     id: n.id,
     type,
+    actorAddress: n.actor,
     actorName,
     actorInitial,
     actorAvatarUrl,
@@ -451,7 +442,6 @@ export class NotificationsTab {
   private renderItem(item: NotificationItemUI): HTMLElement {
     const typeVisual = mapTypeToVisual(item.type);
 
-    // Left: avatar + type icon
     const avatar = el('div.notification-avatar') as HTMLElement;
 
     if (item.actorAvatarUrl) {
@@ -460,6 +450,11 @@ export class NotificationsTab {
       img.alt = item.actorName || 'Profile';
       img.className = 'notification-avatar-img';
       avatar.appendChild(img);
+    } else if (isEthAddress(item.actorAddress)) {
+      const jazz = createJazzicon(item.actorAddress as `0x${string}`);
+      (jazz as HTMLElement).style.width = '100%';
+      (jazz as HTMLElement).style.height = '100%';
+      avatar.appendChild(jazz as HTMLElement);
     } else {
       avatar.textContent = item.actorInitial;
     }
@@ -473,7 +468,6 @@ export class NotificationsTab {
 
     const left = el('div.notification-left', avatar, typeIcon);
 
-    // Center: main body
     const actor = el('span.notification-actor', item.actorName);
     const verb = el('span.notification-verb', item.verb);
 
@@ -488,7 +482,6 @@ export class NotificationsTab {
       preview || null,
     );
 
-    // Right: unread dot + time
     const unreadDot = el('div.notification-unread-dot');
     const time = el('div.notification-time', item.timeAgo);
 

@@ -1,4 +1,4 @@
-import { tokenManager } from '@gaiaprotocol/client-common';
+import { createJazzicon, tokenManager } from '@gaiaprotocol/client-common';
 import { el } from '@webtaku/el';
 import type { PersonaChatMessage } from '../../shared/types/chat';
 import type { PersonaFragmentHolding } from '../../shared/types/persona-fragments';
@@ -29,6 +29,7 @@ interface ViewChatMessage {
   text: string;
   time: string; // "2:45 PM"
   avatarUrl: string | null;
+  walletAddress?: string | null;
   raw: PersonaChatMessage;
 }
 
@@ -233,8 +234,11 @@ export class ChatTab {
 
       this.threads = holdings.map((h: PersonaFragmentHolding) => {
         const persona = h.personaAddress;
-        const displayName =
-          (h as any).name || this.shortenAddress(persona); // 백엔드에 name 있으면 우선 사용
+
+        const rawName =
+          (h as any).name as string | undefined | null;
+        const displayName = this.formatDisplayName(persona, rawName);
+
         const avatarUrl = (h as any).avatarUrl ?? null;
 
         const avatarInitial =
@@ -265,7 +269,10 @@ export class ChatTab {
         );
 
         if (!exists) {
-          const displayName = this.shortenAddress(normalizedMy);
+          const displayName = this.formatDisplayName(
+            normalizedMy,
+            normalizedMy,
+          );
           const avatarInitial =
             displayName.trim().charAt(0).toUpperCase() ||
             normalizedMy.slice(2, 3).toUpperCase() ||
@@ -366,6 +373,7 @@ export class ChatTab {
 
     this.filteredThreads.forEach((thread) => {
       const avatarEl = el('div.chat-thread-avatar') as HTMLElement;
+      avatarEl.innerHTML = '';
 
       if (thread.avatarUrl) {
         const img = el('img.chat-thread-avatar-img', {
@@ -373,6 +381,14 @@ export class ChatTab {
           alt: thread.name || 'Persona',
         }) as HTMLImageElement;
         avatarEl.append(img);
+      } else if (this.isWalletAddress(thread.personaAddress)) {
+        const jazz = this.createAddressJazzicon(thread.personaAddress);
+        if (jazz) {
+          (jazz as HTMLElement).classList.add('chat-thread-avatar-img');
+          avatarEl.append(jazz as HTMLElement);
+        } else {
+          avatarEl.textContent = thread.avatarInitial;
+        }
       } else {
         avatarEl.textContent = thread.avatarInitial;
       }
@@ -444,8 +460,10 @@ export class ChatTab {
           lowerMy && m.sender.toLowerCase() === lowerMy ? 'you' : 'other';
 
         const profile = m.senderProfile;
-        const displayName =
-          profile?.nickname?.trim() || this.shortenAddress(m.sender);
+        const displayName = this.formatDisplayName(
+          m.sender,
+          profile?.nickname,
+        );
         const avatarUrl = profile?.avatarUrl ?? null;
 
         const time = new Date(m.createdAt * 1000).toLocaleTimeString([], {
@@ -460,6 +478,7 @@ export class ChatTab {
           text: m.content,
           time,
           avatarUrl,
+          walletAddress: m.sender,
           raw: m,
         };
       });
@@ -469,8 +488,35 @@ export class ChatTab {
   }
 
   private shortenAddress(addr: string) {
-    if (!addr.startsWith('0x') || addr.length <= 10) return addr;
+    if (!addr?.startsWith('0x') || addr.length <= 10) return addr;
     return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+  }
+
+  private isWalletAddress(value?: string | null): value is `0x${string}` {
+    if (!value) return false;
+    return /^0x[a-fA-F0-9]{40}$/.test(value);
+  }
+
+  private formatDisplayName(address: string, nickname?: string | null): string {
+    const trimmed = nickname?.trim();
+    if (trimmed && this.isWalletAddress(trimmed)) {
+      return this.shortenAddress(trimmed);
+    }
+    if (trimmed && trimmed.length > 0) return trimmed;
+    return this.shortenAddress(address);
+  }
+
+  private createAddressJazzicon(address: string): HTMLElement | null {
+    try {
+      if (!this.isWalletAddress(address)) return null;
+      const normalized = getAddress(address as `0x${string}`);
+      const jazz = createJazzicon(normalized);
+      (jazz as HTMLElement).style.width = '100%';
+      (jazz as HTMLElement).style.height = '100%';
+      return jazz as HTMLElement;
+    } catch {
+      return null;
+    }
   }
 
   /* ================================================================== */
@@ -482,7 +528,9 @@ export class ChatTab {
 
     this.headerAvatarEl = el('div.chat-main-avatar') as HTMLElement;
 
-    this.mainNameEl = el('a.chat-main-name', { href: '#' }) as HTMLAnchorElement;
+    this.mainNameEl = el('a.chat-main-name', {
+      href: '#',
+    }) as HTMLAnchorElement;
     this.mainStatusEl = el('div.chat-main-status');
 
     const header = el(
@@ -538,6 +586,14 @@ export class ChatTab {
         alt: thread.name || 'Persona',
       }) as HTMLImageElement;
       this.headerAvatarEl.append(img);
+    } else if (this.isWalletAddress(thread.personaAddress)) {
+      const jazz = this.createAddressJazzicon(thread.personaAddress);
+      if (jazz) {
+        (jazz as HTMLElement).classList.add('chat-main-avatar-img');
+        this.headerAvatarEl.append(jazz);
+      } else {
+        this.headerAvatarEl.textContent = thread.avatarInitial;
+      }
     } else {
       this.headerAvatarEl.textContent = thread.avatarInitial;
     }
@@ -562,14 +618,28 @@ export class ChatTab {
       let avatarEl: HTMLElement | null = null;
       if (m.sender === 'other') {
         avatarEl = el('div.chat-message-avatar') as HTMLElement;
+        avatarEl.innerHTML = '';
+
         if (m.avatarUrl) {
           const img = el('img.chat-message-avatar-img', {
             src: m.avatarUrl,
             alt: m.author || 'User',
           }) as HTMLImageElement;
           avatarEl.append(img);
+        } else if (m.walletAddress && this.isWalletAddress(m.walletAddress)) {
+          const jazz = this.createAddressJazzicon(m.walletAddress);
+          if (jazz) {
+            (jazz as HTMLElement).classList.add(
+              'chat-message-avatar-img',
+            );
+            avatarEl.append(jazz);
+          } else {
+            avatarEl.textContent =
+              m.author && m.author.length > 0
+                ? m.author.charAt(0).toUpperCase()
+                : '?';
+          }
         } else {
-          // 아바타 없으면 이모지/이니셜 등으로 대체하고 싶다면 여기서 처리
           avatarEl.textContent =
             m.author && m.author.length > 0
               ? m.author.charAt(0).toUpperCase()
@@ -652,8 +722,10 @@ export class ChatTab {
             : 'other';
 
         const profile = msg.senderProfile;
-        const displayName =
-          profile?.nickname?.trim() || this.shortenAddress(msg.sender);
+        const displayName = this.formatDisplayName(
+          msg.sender,
+          profile?.nickname,
+        );
         const avatarUrl = profile?.avatarUrl ?? null;
 
         const author =
@@ -671,6 +743,7 @@ export class ChatTab {
           text: msg.content,
           time,
           avatarUrl,
+          walletAddress: msg.sender,
           raw: msg,
         };
 
@@ -788,8 +861,10 @@ export class ChatTab {
         : 'other';
 
     const profile = msg.senderProfile;
-    const displayName =
-      profile?.nickname?.trim() || this.shortenAddress(msg.sender);
+    const displayName = this.formatDisplayName(
+      msg.sender,
+      profile?.nickname,
+    );
     const avatarUrl = profile?.avatarUrl ?? null;
 
     const author =
@@ -807,6 +882,7 @@ export class ChatTab {
       text: msg.content,
       time,
       avatarUrl,
+      walletAddress: msg.sender,
       raw: msg,
     };
 
@@ -874,15 +950,22 @@ export class ChatTab {
     const mobileMain = el('div.chat-main.chat-main-modal');
 
     const avatar = el('div.chat-main-avatar') as HTMLElement;
-
-    // 모바일 헤더 아바타에도 이미지 적용
     avatar.innerHTML = '';
+
     if (thread.avatarUrl) {
       const img = el('img.chat-main-avatar-img', {
         src: thread.avatarUrl,
         alt: thread.name || 'Persona',
       }) as HTMLImageElement;
       avatar.append(img);
+    } else if (this.isWalletAddress(thread.personaAddress)) {
+      const jazz = this.createAddressJazzicon(thread.personaAddress);
+      if (jazz) {
+        (jazz as HTMLElement).classList.add('chat-main-avatar-img');
+        avatar.append(jazz);
+      } else {
+        avatar.textContent = thread.avatarInitial;
+      }
     } else {
       avatar.textContent = thread.avatarInitial;
     }

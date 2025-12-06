@@ -491,7 +491,8 @@ function shortenEthAddress(addr: string): string {
 
 /**
  * 홈 트렌딩 카드 렌더링
- * - p.avatarUrl 이 있으면 이미지, 없으면 이니셜 텍스트
+ * - avatarUrl이 있으면 이미지, 없으면 Jazzicon
+ * - 이름이 지갑 주소면 축약 표시
  */
 function renderHomeTrendingCards(
   personas: TrendingPersonaFragment[],
@@ -526,7 +527,7 @@ function renderHomeTrendingCards(
       if (p.change24hPct === null || Number.isNaN(p.change24hPct)) return '—';
 
       const value = p.change24hPct;
-      const sign = value > 0 ? '+' : value < 0 ? '' : ''; // 0이면 + 안 붙이기
+      const sign = value > 0 ? '+' : value < 0 ? '' : '';
       return `${sign}${value.toFixed(2)}%`;
     })();
 
@@ -534,7 +535,7 @@ function renderHomeTrendingCards(
       if (p.change24hPct === null || Number.isNaN(p.change24hPct)) return '';
       if (p.change24hPct > 0) return 'home-card-change-up';
       if (p.change24hPct < 0) return 'home-card-change-down';
-      return ''; // 0%일 때는 중립
+      return '';
     })();
 
     // 24h 볼륨 (wei → ETH)
@@ -554,18 +555,19 @@ function renderHomeTrendingCards(
       }
     })();
 
-    const avatarInitial = (p.name || '').trim().charAt(0).toUpperCase() || 'P';
-
-    // 여기서 아바타 이미지/텍스트 결정
-    const avatarHTML = p.avatarUrl
-      ? `<img src="${p.avatarUrl}" alt="${p.name || 'Persona'}" class="home-card-avatar-img" />`
-      : avatarInitial;
+    const baseName = (p.name || '').trim();
+    const displayName =
+      baseName && baseName.length > 0
+        ? baseName.startsWith('0x') && baseName.length > 10
+          ? shortenEthAddress(baseName)
+          : baseName
+        : shortenEthAddress(p.personaAddress);
 
     card.innerHTML = `
       <div class="home-card-header">
-        <div class="home-card-avatar">${avatarHTML}</div>
+        <div class="home-card-avatar"></div>
         <div class="home-card-meta">
-          <div class="home-card-name">${p.name}</div>
+          <div class="home-card-name">${displayName}</div>
           <div class="home-card-address">${shortenEthAddress(p.personaAddress)}</div>
         </div>
       </div>
@@ -593,6 +595,28 @@ function renderHomeTrendingCards(
 
       <button class="home-card-button" type="button">Open Persona</button>
     `;
+
+    // 아바타 영역에 Jazzicon / 이미지 삽입
+    const avatarSlot = card.querySelector<HTMLDivElement>('.home-card-avatar');
+    if (avatarSlot) {
+      avatarSlot.innerHTML = '';
+      if (p.avatarUrl) {
+        const img = document.createElement('img');
+        img.src = p.avatarUrl;
+        img.alt = displayName || 'Persona';
+        img.className = 'home-card-avatar-img';
+        avatarSlot.appendChild(img);
+      } else if (p.personaAddress && p.personaAddress.startsWith('0x')) {
+        const jazz = createJazzicon(p.personaAddress as `0x${string}`);
+        (jazz as HTMLElement).style.width = '100%';
+        (jazz as HTMLElement).style.height = '100%';
+        avatarSlot.appendChild(jazz as HTMLElement);
+      } else {
+        const initial =
+          displayName.trim().charAt(0).toUpperCase() || 'P';
+        avatarSlot.textContent = initial;
+      }
+    }
 
     card.addEventListener('click', (e) => {
       e.preventDefault();

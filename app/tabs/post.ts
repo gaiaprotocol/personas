@@ -55,8 +55,10 @@ export class PostTab {
     post: PersonaPost,
     getAuthToken?: () => string | undefined,
   ) {
-    const likeBtn = this.el.querySelector<HTMLElement>('[data-hook="action-like"]');
-    const likeStat = this.el.querySelector<HTMLElement>('[data-hook="stat-likes"]');
+    const likeBtn =
+      this.el.querySelector<HTMLElement>('[data-hook="action-like"]');
+    const likeStat =
+      this.el.querySelector<HTMLElement>('[data-hook="stat-likes"]');
     if (!likeBtn || !likeStat) return;
 
     let liked = false;
@@ -93,8 +95,10 @@ export class PostTab {
     post: PersonaPost,
     getAuthToken?: () => string | undefined,
   ) {
-    const repostBtn = this.el.querySelector<HTMLElement>('[data-hook="action-repost"]');
-    const repostStat = this.el.querySelector<HTMLElement>('[data-hook="stat-reposts"]');
+    const repostBtn =
+      this.el.querySelector<HTMLElement>('[data-hook="action-repost"]');
+    const repostStat =
+      this.el.querySelector<HTMLElement>('[data-hook="stat-reposts"]');
     if (!repostBtn || !repostStat) return;
 
     let repostCount = post.repostCount ?? 0;
@@ -134,10 +138,14 @@ export class PostTab {
     post: PersonaPost,
     getAuthToken?: () => string | undefined,
   ) {
-    const input = this.el.querySelector<HTMLTextAreaElement>('[data-hook="reply-input"]');
-    const submit = this.el.querySelector<HTMLButtonElement>('[data-hook="reply-submit"]');
-    const list = this.el.querySelector<HTMLElement>('.post-replies-list');
-    const repliesStat = this.el.querySelector<HTMLElement>('[data-hook="stat-replies"]');
+    const input =
+      this.el.querySelector<HTMLTextAreaElement>('[data-hook="reply-input"]');
+    const submit =
+      this.el.querySelector<HTMLButtonElement>('[data-hook="reply-submit"]');
+    const list =
+      this.el.querySelector<HTMLElement>('.post-replies-list');
+    const repliesStat =
+      this.el.querySelector<HTMLElement>('[data-hook="stat-replies"]');
 
     if (!input || !submit || !list || !repliesStat) return;
 

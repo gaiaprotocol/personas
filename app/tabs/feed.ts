@@ -1,6 +1,8 @@
+import '@shoelace-style/shoelace';
 import { el } from '@webtaku/el';
 import './feed.css';
 
+import { createJazzicon } from '@gaiaprotocol/client-common';
 import { PersonaPost } from '../../shared/types/post';
 import { postCard } from '../../shared/ui/post';
 import {
@@ -99,21 +101,38 @@ export class FeedTab {
   /* ================= composer ================= */
 
   private buildComposer(): HTMLElement {
-    const displayName =
+    const rawDisplay =
       this.options.currentDisplayName ??
       (this.options.currentAccount
-        ? shortenAddress(this.options.currentAccount)
+        ? this.options.currentAccount
         : 'Guest');
 
-    const handle =
+    let displayName = rawDisplay;
+    if (displayName && displayName.startsWith('0x') && displayName.length > 10) {
+      displayName = shortenAddress(displayName);
+    }
+
+    const rawHandle =
       this.options.currentHandle ??
       (this.options.currentAccount
         ? `@${shortenAddress(this.options.currentAccount)}`
         : '@guest');
 
-    const avatarInitial = (displayName || '?')[0]?.toUpperCase() ?? '?';
+    const handle = rawHandle;
 
-    const composerAvatar = el('div.feed-composer-avatar', avatarInitial);
+    const composerAvatar = el('div.feed-composer-avatar') as HTMLElement;
+
+    // 아바타: 주소가 있으면 Jazzicon, 없으면 이니셜
+    const account = this.options.currentAccount;
+    if (account && account.startsWith('0x')) {
+      const jazz = createJazzicon(account as `0x${string}`);
+      (jazz as HTMLElement).style.width = '100%';
+      (jazz as HTMLElement).style.height = '100%';
+      composerAvatar.appendChild(jazz as HTMLElement);
+    } else {
+      const avatarInitial = (displayName || '?')[0]?.toUpperCase() ?? '?';
+      composerAvatar.textContent = avatarInitial;
+    }
 
     this.composerInput = el('textarea.feed-composer-input', {
       placeholder: "What's happening?",

@@ -1,3 +1,4 @@
+import { createJazzicon, tokenManager } from '@gaiaprotocol/client-common';
 import { el } from '@webtaku/el';
 import { profile as profileTemplate } from '../../shared/ui/profile'; // (builder, profile, posts)
 import './profile.css';
@@ -6,7 +7,6 @@ import type { PersonaPost } from '../../shared/types/post';
 import type { Profile } from '../../shared/types/profile';
 import { fetchPersonaProfile } from '../api/profile';
 
-import { tokenManager } from '@gaiaprotocol/client-common';
 import { formatEther, getAddress } from 'viem';
 import { TradePanel } from '../components/trade-panel';
 import { Address } from '../contracts/persona-fragments';
@@ -22,12 +22,23 @@ function shortenAddress(addr: string, head = 6, tail = 4) {
   return `${addr.slice(0, head)}...${addr.slice(-tail)}`;
 }
 
+function isWalletAddress(value?: string | null): value is `0x${string}` {
+  if (!value) return false;
+  return /^0x[a-fA-F0-9]{40}$/.test(value);
+}
+
 /** 서버 Profile + Posts → 뷰모델 */
 function toUserProfileData(profile: Profile, posts: PersonaPost[]) {
-  const name =
-    profile.nickname?.trim().length
-      ? profile.nickname.trim()
-      : shortenAddress(profile.account);
+  const rawNickname = profile.nickname?.trim();
+  let name: string;
+
+  if (rawNickname && isWalletAddress(rawNickname)) {
+    name = shortenAddress(rawNickname);
+  } else if (rawNickname && rawNickname.length > 0) {
+    name = rawNickname;
+  } else {
+    name = shortenAddress(profile.account);
+  }
 
   const avatarInitial =
     (
@@ -72,6 +83,7 @@ function toUserProfileData(profile: Profile, posts: PersonaPost[]) {
     bio: profile.bio ?? '',
     address: profile.account,
     avatarInitial,
+    avatarUrl: profile.avatarUrl ?? null,
     posts: mappedPosts,
   };
 }
@@ -92,8 +104,30 @@ function applyProfileData(
 
   const avatar = root.querySelector<HTMLElement>('.profile-avatar');
   if (avatar) {
-    avatar.textContent = data.avatarInitial;
-    avatar.style.backgroundImage = '';
+    avatar.innerHTML = '';
+
+    if (data.avatarUrl) {
+      const img = document.createElement('img');
+      img.src = data.avatarUrl;
+      img.alt = data.name;
+      img.className = 'profile-avatar-img';
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'cover';
+      avatar.appendChild(img);
+    } else if (data.address && isWalletAddress(data.address)) {
+      try {
+        const checksum = getAddress(data.address as `0x${string}`);
+        const jazz = createJazzicon(checksum);
+        (jazz as HTMLElement).style.width = '100%';
+        (jazz as HTMLElement).style.height = '100%';
+        avatar.appendChild(jazz as HTMLElement);
+      } catch {
+        avatar.textContent = data.avatarInitial;
+      }
+    } else {
+      avatar.textContent = data.avatarInitial;
+    }
   }
 
   // 포스트 리스트는 shared 템플릿(postCard) 스타일을 그대로 사용하므로 수정하지 않는다.
@@ -148,10 +182,12 @@ function setupPostModalTriggers(
 
 /** 프로필 내용 안에 거래 패널을 mount (모달 버전) */
 function mountTradePanel(root: HTMLElement, profile: Profile) {
-  const contentOffset = root.querySelector<HTMLElement>('.profile-content-offset');
+  const contentOffset =
+    root.querySelector<HTMLElement>('.profile-content-offset');
   if (!contentOffset) return;
 
-  const statsRow = contentOffset.querySelector<HTMLElement>('.profile-stats-row');
+  const statsRow =
+    contentOffset.querySelector<HTMLElement>('.profile-stats-row');
   if (!statsRow) return;
 
   const tradeContainer = document.createElement('section');
@@ -449,12 +485,14 @@ export function createUserProfileModal(
       // 프로필 탭과 동일한 인터랙티브 기능들 mount
       try {
         mountTradePanel(profileRoot, profile);
-        loadUserHoldingOrChatCTA(profileRoot, profile, navigate).catch((err) => {
-          console.error(
-            '[user-profile-modal] failed to load user holding/chat CTA',
-            err,
-          );
-        });
+        loadUserHoldingOrChatCTA(profileRoot, profile, navigate).catch(
+          (err) => {
+            console.error(
+              '[user-profile-modal] failed to load user holding/chat CTA',
+              err,
+            );
+          },
+        );
         loadOnchainStats(profileRoot, profile).catch((err) => {
           console.error(
             '[user-profile-modal] failed to load on-chain stats',
@@ -462,7 +500,10 @@ export function createUserProfileModal(
           );
         });
       } catch (e) {
-        console.error('[user-profile-modal] setup interactive features failed', e);
+        console.error(
+          '[user-profile-modal] setup interactive features failed',
+          e,
+        );
       }
 
       // 내 프로필 모달인 경우, profileManager.change 구독해서 실시간 업데이트

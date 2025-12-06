@@ -39,10 +39,7 @@ function setupInternalLinks(
 /* ------------------------------
  * 메인 포스트 좋아요
  * ----------------------------*/
-function setupMainLike(
-  root: HTMLElement,
-  post: PersonaPost,
-) {
+function setupMainLike(root: HTMLElement, post: PersonaPost) {
   const likeBtn = root.querySelector<HTMLElement>('[data-hook="action-like"]');
   const likeStat = root.querySelector<HTMLElement>('[data-hook="stat-likes"]');
   if (!likeBtn || !likeStat) return;
@@ -80,14 +77,14 @@ function setupMainLike(
 /* ------------------------------
  * 답글 작성
  * ----------------------------*/
-function setupReplyComposer(
-  root: HTMLElement,
-  post: PersonaPost,
-) {
-  const input = root.querySelector<HTMLTextAreaElement>('[data-hook="reply-input"]');
-  const submit = root.querySelector<HTMLButtonElement>('[data-hook="reply-submit"]');
+function setupReplyComposer(root: HTMLElement, post: PersonaPost) {
+  const input =
+    root.querySelector<HTMLTextAreaElement>('[data-hook="reply-input"]');
+  const submit =
+    root.querySelector<HTMLButtonElement>('[data-hook="reply-submit"]');
   const list = root.querySelector<HTMLElement>('.post-replies-list');
-  const repliesStat = root.querySelector<HTMLElement>('[data-hook="stat-replies"]');
+  const repliesStat =
+    root.querySelector<HTMLElement>('[data-hook="stat-replies"]');
 
   if (!input || !submit || !list || !repliesStat) return;
 
@@ -113,8 +110,9 @@ function setupReplyComposer(
         token,
       );
 
-      const node = (replyList(el as any, [created]) as HTMLElement)
-        .querySelector('[data-hook="reply-item"]');
+      const node = (replyList(el as any, [created]) as HTMLElement).querySelector(
+        '[data-hook="reply-item"]',
+      );
       if (node) list.insertBefore(node, list.firstChild);
 
       replyCount += 1;
