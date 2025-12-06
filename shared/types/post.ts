@@ -4,6 +4,10 @@ export interface PersonaPost {
   id: number;
   author: string; // Wallet address of the author
 
+  // 작성자 프로필 정보 (profiles JOIN 결과)
+  authorNickname: string | null;
+  authorAvatarUrl: string | null;
+
   content: string;
   // DB: string | null (JSON), Domain: parsed object
   attachments: PersonaPostAttachments | null;
@@ -45,7 +49,14 @@ export type PersonaPostRow = {
   updated_at: number | null;
 };
 
-export function rowToPersonaPost(row: PersonaPostRow): PersonaPost {
+export type PersonaPostRowWithProfile = PersonaPostRow & {
+  author_nickname: string | null;
+  author_avatar_url: string | null;
+};
+
+export function rowToPersonaPost(
+  row: PersonaPostRow | PersonaPostRowWithProfile,
+): PersonaPost {
   let attachments: PersonaPostAttachments | null = null;
 
   if (row.attachments) {
@@ -57,9 +68,22 @@ export function rowToPersonaPost(row: PersonaPostRow): PersonaPost {
     }
   }
 
+  let authorNickname: string | null = null;
+  let authorAvatarUrl: string | null = null;
+
+  if ('author_nickname' in row) {
+    authorNickname = row.author_nickname ?? null;
+  }
+  if ('author_avatar_url' in row) {
+    authorAvatarUrl = row.author_avatar_url ?? null;
+  }
+
   return {
     id: row.id,
     author: row.author,
+
+    authorNickname,
+    authorAvatarUrl,
 
     content: row.content,
     attachments,
@@ -79,6 +103,8 @@ export function rowToPersonaPost(row: PersonaPostRow): PersonaPost {
     updatedAt: row.updated_at,
   };
 }
+
+/* 아래는 필요하면 그대로 유지 (뷰/좋아요/북마크 타입) */
 
 export interface PersonaPostView {
   postId: number; // references persona_posts.id
@@ -133,7 +159,7 @@ export type PersonaPostBookmarkRow = {
 };
 
 export function rowToPersonaPostBookmark(
-  row: PersonaPostBookmarkRow
+  row: PersonaPostBookmarkRow,
 ): PersonaPostBookmark {
   return {
     postId: row.post_id,

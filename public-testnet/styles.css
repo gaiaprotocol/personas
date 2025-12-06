@@ -3676,6 +3676,17 @@ img.jazzicon {
     padding-right: 0.6rem;
   }
 }
+
+/* 아바타 이미지 (포스트 카드 / 상세 / 답글 공통) */
+.post-card-avatar-img,
+.post-avatar-img,
+.post-reply-avatar-small-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+  display: block;
+}
 :root {
   --ion-color-primary: #C1A87D;
   --ion-color-primary-rgb: 193, 168, 125;
@@ -5885,12 +5896,6 @@ ion-modal.chat-room-modal {
 
 .notification-verb {
   font-size: 0.9rem;
-  color: var(--text-secondary);
-}
-
-/* 설명 텍스트 */
-.notification-subline {
-  font-size: 0.84rem;
   color: var(--text-secondary);
 }
 

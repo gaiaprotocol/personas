@@ -1,10 +1,20 @@
 declare const GAIA_API_BASE_URI: string;
 
+/**
+ * 서버 Notification 형식에 맞춘 RawNotification 타입
+ */
 export type RawNotification = {
   id: number;
+
   recipient: string;
+  recipientNickname: string | null;
+  recipientAvatarUrl: string | null;
+
   actor: string | null;
   actorType: string | null;
+  actorNickname: string | null;
+  actorAvatarUrl: string | null;
+
   notificationType: string;          // e.g. "post.like", "post.comment", "persona.buy"
   targetId: string | null;           // e.g. post id, persona address
   metadata: Record<string, unknown> | null;
@@ -15,9 +25,13 @@ export type RawNotification = {
 export type NotificationsListResponse = {
   notifications: RawNotification[];
   nextCursor: number | null;
+  unreadCount: number;               // 전체 미읽은 개수 (counter 기반)
 };
 
-export type MarkReadResult = { ok: true };
+export type MarkReadResult = {
+  ok: true;
+  unreadCount?: number;              // 서버가 내려주는 최신 unreadCount (optional)
+};
 
 function parseError(res: Response, fallback: string): Promise<never> {
   return res

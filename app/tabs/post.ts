@@ -22,7 +22,6 @@ export class PostTab {
   ) {
     this.navigate = opts.navigate;
 
-    // 1) 순수 뷰로 기본 DOM 생성
     this.el = el(
       'section.post-wrapper',
       el(
@@ -33,10 +32,7 @@ export class PostTab {
       ),
     ) as HTMLElement;
 
-    // 2) 내부 링크에 SPA 라우팅 연결
     this.setupInternalLinks();
-
-    // 3) data-hook 기반으로 이벤트 붙이기 (Controller 역할)
     this.setupMainLike(post, opts.getAuthToken);
     this.setupMainRepost(post, opts.getAuthToken);
     this.setupReplyComposer(post, opts.getAuthToken);
@@ -93,7 +89,6 @@ export class PostTab {
     });
   }
 
-  /** 상세 화면 리포스트 버튼 동작 */
   private setupMainRepost(
     post: PersonaPost,
     getAuthToken?: () => string | undefined,

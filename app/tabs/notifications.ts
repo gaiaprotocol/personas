@@ -34,7 +34,7 @@ interface NotificationItemUI {
   type: NotificationVerbType;
   actorName: string;
   actorInitial: string;
-  actorAvatarUrl?: string; // ★ 추가: 프로필 이미지 URL
+  actorAvatarUrl?: string;
   verb: string;
   preview?: string | null;
   timeAgo: string;
@@ -75,15 +75,20 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
   const type = n.notificationType as NotificationVerbType;
 
   const meta = n.metadata ?? {};
+
+  // 서버에서 내려주는 actorNickname / actorAvatarUrl 을 우선 사용,
+  // 없으면 metadata 안의 값들을 fallback 으로 사용
   const actorNickname =
-    (meta.actorNickname as string | undefined) ||
-    (meta.actor_name as string | undefined) ||
+    n.actorNickname ??
+    (meta.actorNickname as string | undefined) ??
+    (meta.actor_name as string | undefined) ??
     undefined;
 
   const actorAvatarUrl =
-    (meta.actorAvatarUrl as string | undefined) ||
-    (meta.actorAvatar as string | undefined) ||
-    (meta.avatarUrl as string | undefined) ||
+    n.actorAvatarUrl ??
+    (meta.actorAvatarUrl as string | undefined) ??
+    (meta.actorAvatar as string | undefined) ??
+    (meta.avatarUrl as string | undefined) ??
     undefined;
 
   const actorName = actorNickname ?? shortenAddress(n.actor);
@@ -106,7 +111,6 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
 
     case 'post.comment':
     case 'post.reply':
-      // Treat "post.reply" as a comment for UI purpose
       verb = 'commented on your post';
       preview =
         (meta.commentPreview as string) ??
@@ -191,7 +195,6 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
         (meta.messagePreview as string) ??
         (meta.chatPreview as string) ??
         null;
-      // If personaAddress exists, navigate to /chat/:personaAddress
       if (meta.personaAddress) {
         navigatePath = `/chat/${meta.personaAddress as string}`;
       }
@@ -290,7 +293,6 @@ export class NotificationsTab {
   private navigate?: (path: string) => void;
   private loading = false;
 
-  // Callback to notify external code (e.g. main.ts) of unread-count changes
   private onUnreadCountChange?: (count: number) => void;
 
   constructor(
@@ -309,13 +311,9 @@ export class NotificationsTab {
     inner.append(header, this.listEl);
     this.el.append(inner);
 
-    // Initial load
     void this.fetchAndRender();
   }
 
-  /**
-   * Public method to refresh notifications from outside (used in main.ts).
-   */
   public async refresh() {
     await this.fetchAndRender();
   }
@@ -357,7 +355,6 @@ export class NotificationsTab {
       this.renderList();
       this.subtitleEl.textContent = 'Sign in to see your notifications';
       this.markAllButton.disabled = true;
-      // Notify external code that unread count is 0 when signed out
       if (this.onUnreadCountChange) {
         this.onUnreadCountChange(0);
       }
@@ -368,7 +365,7 @@ export class NotificationsTab {
     this.loading = true;
 
     try {
-      const { notifications } = await fetchNotificationsApi({
+      const { notifications, unreadCount } = await fetchNotificationsApi({
         token,
         limit: 50,
         cursor: 0,
@@ -376,7 +373,7 @@ export class NotificationsTab {
 
       this.items = notifications.map(mapRawToUI);
       this.renderList();
-      this.updateUnreadSummary();
+      this.updateUnreadSummary(unreadCount);
     } catch (err: any) {
       console.error('[NotificationsTab] fetch failed', err);
       this.items = [];
@@ -385,7 +382,6 @@ export class NotificationsTab {
       this.subtitleEl.textContent = 'Failed to load notifications';
       this.markAllButton.disabled = true;
 
-      // In case of error, consider unread count as 0 for the badge
       if (this.onUnreadCountChange) {
         this.onUnreadCountChange(0);
       }
@@ -394,8 +390,15 @@ export class NotificationsTab {
     }
   }
 
-  private updateUnreadSummary() {
-    const unreadCount = this.items.filter((n) => n.unread).length;
+  /**
+   * 서버에서 내려준 전체 unreadCount 를 우선 사용.
+   * 없으면 현재 페이지 기준으로 계산.
+   */
+  private updateUnreadSummary(totalUnread?: number) {
+    const unreadCount =
+      typeof totalUnread === 'number'
+        ? totalUnread
+        : this.items.filter((n) => n.unread).length;
 
     if (unreadCount === 0) {
       this.subtitleEl.textContent = 'You have no unread notifications';
@@ -408,7 +411,6 @@ export class NotificationsTab {
       this.markAllButton.disabled = false;
     }
 
-    // Notify external code (e.g. to update the bottom tab badge)
     if (this.onUnreadCountChange) {
       this.onUnreadCountChange(unreadCount);
     }
@@ -419,10 +421,11 @@ export class NotificationsTab {
     if (!token) return;
 
     try {
-      await markAllNotificationsAsReadApi(token);
+      const res = await markAllNotificationsAsReadApi(token);
       this.items = this.items.map((n) => ({ ...n, unread: false }));
       this.renderList();
-      this.updateUnreadSummary();
+      // 서버 응답에 unreadCount 가 있다면 사용, 없으면 0 으로 처리
+      this.updateUnreadSummary((res as any).unreadCount ?? 0);
     } catch (err) {
       console.error('[NotificationsTab] markAll error', err);
     }
@@ -520,10 +523,14 @@ export class NotificationsTab {
       // Persist read state to server (ignore failures)
       if (token) {
         try {
-          await markNotificationsAsReadApi({
+          const res = await markNotificationsAsReadApi({
             token,
             id: item.id,
           });
+          // 서버 unreadCount 가 내려오면 그걸로 동기화
+          if ((res as any).unreadCount != null) {
+            this.updateUnreadSummary((res as any).unreadCount);
+          }
         } catch (err) {
           console.error('[NotificationsTab] mark read error', err);
         }

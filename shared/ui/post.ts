@@ -1,4 +1,3 @@
-// shared/ui/post.ts
 import { AnyBuilder } from '@webtaku/any-builder';
 import { PersonaPost } from '../types/post';
 import {
@@ -20,12 +19,12 @@ export function postCard<B extends AnyBuilder>(
 ) {
   const { post, isMine, variant = 'feed', compact } = props;
 
-  const short = shortenAddress(post.author);
-  const handle = `@${short}`;
+  const shortAddress = shortenAddress(post.author);
+  const displayName = post.authorNickname ?? shortAddress;
+  const handle = `@${shortAddress}`;
   const time = formatRelativeTimeFromSeconds(post.createdAt);
-  const avatar = avatarInitialFromName(short);
+  const avatarInitial = avatarInitialFromName(displayName);
 
-  // variant / compact 에 따라 class만 살짝 다르게
   const extraClass =
     variant === 'profile'
       ? 'post-card--profile'
@@ -33,19 +32,29 @@ export function postCard<B extends AnyBuilder>(
         ? 'post-card--compact'
         : 'post-card--feed';
 
+  const avatarNode = post.authorAvatarUrl
+    ? b(
+      'div.post-card-avatar',
+      b('img.post-card-avatar-img', {
+        src: post.authorAvatarUrl,
+        alt: displayName,
+      }),
+    )
+    : b('div.post-card-avatar', avatarInitial);
+
   return b(
     'article.post-card',
     {
       'data-post-id': post.id,
       'data-hook': 'post-card',
-      class: extraClass, // CSS에서 .post-card.post-card--profile 로 스타일 분기
+      class: extraClass,
     },
-    b('div.post-card-avatar', avatar),
+    avatarNode,
     b(
       'div.post-card-main',
       b(
         'div.post-card-header',
-        b('span.post-card-author', short),
+        b('span.post-card-author', displayName),
         b('span.post-card-handle', handle),
         b('span.post-card-dot', '·'),
         b('span.post-card-time', time),
@@ -83,21 +92,32 @@ export function postCard<B extends AnyBuilder>(
   );
 }
 
-/** 상세 화면용 메인 포스트 (좋아요 버튼 등은 data-hook 만) */
+/** 상세 화면용 메인 포스트 */
 export function postDetailMain<B extends AnyBuilder>(
   b: B,
   props: PostViewProps,
 ) {
   const { post, isMine } = props;
-  const short = shortenAddress(post.author);
-  const handle = `@${short}`;
-  const avatar = avatarInitialFromName(short);
+  const shortAddress = shortenAddress(post.author);
+  const displayName = post.authorNickname ?? shortAddress;
+  const handle = `@${shortAddress}`;
+  const avatarInitial = avatarInitialFromName(displayName);
   const time = formatRelativeTimeFromSeconds(post.createdAt);
+
+  const avatarNode = post.authorAvatarUrl
+    ? b(
+      'div.post-avatar',
+      b('img.post-avatar-img', {
+        src: post.authorAvatarUrl,
+        alt: displayName,
+      }),
+    )
+    : b('div.post-avatar', avatarInitial);
 
   return b(
     'section.post-main',
     { 'data-post-id': post.id, 'data-hook': 'post-main' },
-    b('div.post-avatar', avatar),
+    avatarNode,
     b(
       'div.post-main-body',
       b(
@@ -105,7 +125,7 @@ export function postDetailMain<B extends AnyBuilder>(
         b(
           'a.post-main-author',
           { href: `/profile/${post.author}`, 'data-hook': 'link-profile' },
-          short,
+          displayName,
         ),
         b('span.post-main-handle', handle),
       ),
@@ -176,21 +196,32 @@ export function postDetailMain<B extends AnyBuilder>(
   );
 }
 
-/** 답글 목록 (각 reply row 도 data-hook 으로만 표시) */
+/** 답글 목록 */
 export function replyList<B extends AnyBuilder>(
   b: B,
   replies: PersonaPost[],
 ) {
   const items = replies.map((rp) => {
-    const short = shortenAddress(rp.author);
-    const handle = `@${short}`;
-    const avatar = avatarInitialFromName(short);
+    const shortAddress = shortenAddress(rp.author);
+    const displayName = rp.authorNickname ?? shortAddress;
+    const handle = `@${shortAddress}`;
+    const avatarInitial = avatarInitialFromName(displayName);
     const time = formatRelativeTimeFromSeconds(rp.createdAt);
+
+    const avatarNode = rp.authorAvatarUrl
+      ? b(
+        'div.post-reply-avatar-small',
+        b('img.post-reply-avatar-small-img', {
+          src: rp.authorAvatarUrl,
+          alt: displayName,
+        }),
+      )
+      : b('div.post-reply-avatar-small', avatarInitial);
 
     return b(
       'div.post-reply-item',
       { 'data-reply-id': rp.id, 'data-hook': 'reply-item' },
-      b('div.post-reply-avatar-small', avatar),
+      avatarNode,
       b(
         'div.post-reply-body',
         b(
@@ -201,7 +232,7 @@ export function replyList<B extends AnyBuilder>(
               href: `/profile/${rp.author}`,
               'data-hook': 'link-profile',
             },
-            short,
+            displayName,
           ),
           b('span.post-reply-handle', handle),
           b('span', '·'),
@@ -227,8 +258,9 @@ export function replyList<B extends AnyBuilder>(
   );
 }
 
-/** 답글 작성 컴포저 (버튼/textarea 만 data-hook) */
+/** 답글 작성 컴포저 */
 export function replyComposer<B extends AnyBuilder>(b: B) {
+  // TODO: 현재는 "Y" 고정이지만, 나중에 내 프로필 닉네임/아바타 적용 가능
   return b(
     'section.post-reply-composer',
     b('div.post-reply-avatar', 'Y'),

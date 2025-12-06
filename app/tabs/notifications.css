@@ -193,12 +193,6 @@
   color: var(--text-secondary);
 }
 
-/* 설명 텍스트 */
-.notification-subline {
-  font-size: 0.84rem;
-  color: var(--text-secondary);
-}
-
 /* 관련 컨텐츠 박스 */
 .notification-preview {
   margin-top: 0.25rem;

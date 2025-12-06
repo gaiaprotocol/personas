@@ -41,6 +41,9 @@ export class ProfileTab {
     this.navigate = navigate;
     this.setupInternalLinks();
 
+    // 프로필 내 포스트 카드 클릭 → 상세/모달
+    this.setupPostCardClicks();
+
     // 거래 패널 mount (소셜 링크 → Stats → Trade → User CTA → Posts 순서)
     this.mountTradePanel(profile);
 
@@ -73,6 +76,49 @@ export class ProfileTab {
       link.addEventListener('click', (e) => {
         e.preventDefault();
         this.navigate?.(href);
+      });
+    });
+  }
+
+  /**
+   * 프로필의 "Recent Posts" 카드 내 포스트 클릭 처리
+   * - 데스크탑: /post/:id 로 navigate
+   * - 모바일(<= 768px): window 에 open-post-modal 이벤트 디스패치
+   */
+  private setupPostCardClicks() {
+    const cards = this.el.querySelectorAll<HTMLElement>('[data-hook="post-card"]');
+
+    cards.forEach((card) => {
+      const idAttr = card.getAttribute('data-post-id');
+      if (!idAttr) return;
+
+      const postId = Number(idAttr);
+      if (!Number.isFinite(postId) || postId <= 0) return;
+
+      card.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement | null;
+
+        // 카드 안의 개별 버튼(댓글/리포스트/좋아요/더보기)을 눌렀을 때는
+        // 카드 네비게이션을 막고, 각 버튼의 핸들러가 동작하게 둠.
+        if (
+          target &&
+          target.closest(
+            '[data-hook="post-reply"],' +
+            '[data-hook="post-repost"],' +
+            '[data-hook="post-like"],' +
+            '[data-hook="post-more"]',
+          )
+        ) {
+          return;
+        }
+
+        const path = `/post/${postId}`;
+
+        if (this.navigate) {
+          this.navigate(path);
+        } else {
+          window.location.href = path;
+        }
       });
     });
   }

@@ -35,7 +35,7 @@ function isValidNicknameLocal(nickname: string): boolean {
   if (nickname !== nickname.normalize('NFC')) return false;
   if (nickname.length > MAX_NICKNAME_LEN) return false;
   if (/^\s|\s$/.test(nickname)) return false;     // 앞/뒤 공백 금지
-  if (/\s{2,}/.test(nickname)) return false;      // 연속 공백 금지 (원치 않으면 제거)
+  if (/\s{2,}/.test(nickname)) return false;      // 연속 공백 금지
   const re = /^[\p{L}\p{N}\s._-]+$/u;             // 글자/숫자/공백/._-
   return re.test(nickname);
 }
@@ -375,7 +375,6 @@ export async function fetchPersonaPostList(
   const searchParams = new URLSearchParams();
 
   if (params.author) {
-    // author는 지갑 주소 그대로 사용 (서버에서 체크섬 처리할 수도 있음)
     searchParams.set('author', params.author);
   }
   if (params.parentPostId !== undefined) {
@@ -449,10 +448,6 @@ export async function fetchPersonaPostWithReplies(
 
 /* -------------------------- 좋아요 / 북마크 ----------------------- */
 
-/**
- * 좋아요
- * 서버 엔드포인트: POST /persona/posts/like
- */
 export async function likePersonaPostApi(
   postId: number,
   token: string,
@@ -483,10 +478,6 @@ export async function likePersonaPostApi(
   return (await res.json()) as SimpleOkResult;
 }
 
-/**
- * 좋아요 취소
- * 서버 엔드포인트: POST /persona/posts/unlike
- */
 export async function unlikePersonaPostApi(
   postId: number,
   token: string,
@@ -517,10 +508,6 @@ export async function unlikePersonaPostApi(
   return (await res.json()) as SimpleOkResult;
 }
 
-/**
- * 북마크
- * 서버 엔드포인트: POST /persona/posts/bookmark
- */
 export async function bookmarkPersonaPostApi(
   postId: number,
   token: string,
@@ -551,10 +538,6 @@ export async function bookmarkPersonaPostApi(
   return (await res.json()) as SimpleOkResult;
 }
 
-/**
- * 북마크 취소
- * 서버 엔드포인트: POST /persona/posts/unbookmark
- */
 export async function unbookmarkPersonaPostApi(
   postId: number,
   token: string,
