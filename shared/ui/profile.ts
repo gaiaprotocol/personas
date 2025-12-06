@@ -1,14 +1,17 @@
 import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
-import { AnyBuilder } from '@webtaku/any-builder';
-import { formatEther } from 'viem';
-import { PersonaFragments } from '../types/persona-fragments';
-import { PersonaPost } from '../types/post';
-import { Profile } from '../types/profile';
+import type { AnyBuilder } from '@webtaku/any-builder';
+import type { PersonaFragments } from '../types/persona-fragments';
+import type { PersonaPost } from '../types/post';
+import type { Profile } from '../types/profile';
 import { postCard } from '../ui/post';
 import {
   avatarInitialFromName,
   shortenAddress,
 } from '../utils/formatting';
+import {
+  computeUnitBuyPriceWeiFromSupply,
+  formatEthLabelFromWei,
+} from '../utils/pricing';
 
 /**
  * Profile page template (SSR/SPA compatible)
@@ -41,10 +44,23 @@ export function profile(
   const socialLinks = profile.socialLinks ?? {};
 
   // ===== Persona fragment-related stats =====
-  const fragmentPriceText =
-    personaFragments?.lastPrice && personaFragments.lastPrice.trim().length > 0
-      ? `${Number(formatEther(BigInt(personaFragments.lastPrice))).toFixed(4)} ETH`
-      : '–';
+  // Fragment price is derived from currentSupply via the same bonding curve
+  // formula as PricingLib.getBuyPrice(supply, 1, priceIncrement, 1).
+  const fragmentPriceText = (() => {
+    const supplyRaw = personaFragments?.currentSupply;
+
+    if (!supplyRaw || supplyRaw.trim().length === 0) {
+      return '–';
+    }
+
+    try {
+      const unitPriceWei = computeUnitBuyPriceWeiFromSupply(supplyRaw);
+      const { label } = formatEthLabelFromWei(unitPriceWei);
+      return label;
+    } catch {
+      return '–';
+    }
+  })();
 
   const holderCountText =
     typeof personaFragments?.holderCount === 'number'
@@ -63,10 +79,13 @@ export function profile(
       const u = new URL(url);
       const host = u.hostname.toLowerCase().replace(/^www\./, '');
 
-      if (host.includes('twitter.com') || host === 'x.com') return 'logo-twitter';
-      if (host.includes('discord.com') || host.includes('discord.gg')) return 'logo-discord';
+      if (host.includes('twitter.com') || host === 'x.com')
+        return 'logo-twitter';
+      if (host.includes('discord.com') || host.includes('discord.gg'))
+        return 'logo-discord';
       if (host.includes('github.com')) return 'logo-github';
-      if (host === 'youtu.be' || host.includes('youtube.com')) return 'logo-youtube';
+      if (host === 'youtu.be' || host.includes('youtube.com'))
+        return 'logo-youtube';
       if (
         host.includes('t.me') ||
         host.includes('telegram.me') ||
@@ -145,10 +164,12 @@ export function profile(
       ? profile.avatarUrl
       : getAddressAvatarDataUrl(profile.account as `0x${string}`);
 
-  const avatarChildren = b('img.profile-avatar-img', {
-    src: avatarSrc,
-    alt: displayName,
-  });
+  const avatarChildren = avatarSrc
+    ? b('img.profile-avatar-img', {
+      src: avatarSrc,
+      alt: displayName,
+    })
+    : b('span.profile-avatar-initial', avatarInitial);
 
   const coverProps =
     profile.bannerUrl && profile.bannerUrl.trim().length > 0
@@ -159,7 +180,7 @@ export function profile(
     'section.profile-card.profile-main-card',
     b(
       'div.profile-main',
-      // data-address를 심어두면 클라이언트에서 AddressAvatar / Jazzicon 등으로 교체 가능
+      // data-address can be used on the client side to replace with AddressAvatar / Jazzicon
       b(
         'div.profile-avatar',
         {

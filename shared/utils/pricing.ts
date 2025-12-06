@@ -9,21 +9,28 @@ import { formatEther } from 'viem';
 export const PRICE_INCREMENT_PER_FRAGMENT = 1_000_000_000_000_000n; // 1e15
 
 /**
- * Computes the current unit price (for 1 fragment) in wei
- * based on the current supply and a linear bonding curve:
- *
- *   price = k * (supply + 1)
- *
- * where:
- *   - k = PRICE_INCREMENT_PER_FRAGMENT
- *   - supply = current fragment supply
+ * Scale factor used in Solidity PricingLib.
+ * In PersonaFragments, scaleFactor is always 1.
  */
-export function computeCurrentUnitPriceWei(
-  supplyLike: string | number | bigint | null | undefined,
-): bigint {
-  if (supplyLike === null || supplyLike === undefined) return 0n;
+export const SCALE_FACTOR = 1n;
 
+/**
+ * Computes the total buy price (in wei) for `amount` fragments
+ * at the current `supply`, using the same formula as
+ * PricingLib.getBuyPrice(supply, amount, priceIncrement, scaleFactor):
+ *
+ *   startPrice = priceIncrement + (supply * priceIncrement) / scaleFactor;
+ *   endSupply  = supply + amount;
+ *   endPrice   = priceIncrement + (endSupply * priceIncrement) / scaleFactor;
+ *   average    = (startPrice + endPrice) / 2;
+ *   price      = (average * amount) / scaleFactor;
+ */
+export function computeBuyPriceWeiFromSupply(
+  supplyLike: string | number | bigint,
+  amountLike: string | number | bigint = 1n,
+): bigint {
   let supply: bigint;
+  let amount: bigint;
 
   try {
     supply = BigInt(supplyLike);
@@ -31,7 +38,35 @@ export function computeCurrentUnitPriceWei(
     supply = 0n;
   }
 
-  return PRICE_INCREMENT_PER_FRAGMENT * (supply + 1n);
+  try {
+    amount = BigInt(amountLike);
+  } catch {
+    amount = 0n;
+  }
+
+  const priceIncrement = PRICE_INCREMENT_PER_FRAGMENT;
+  const scaleFactor = SCALE_FACTOR;
+
+  const startPrice =
+    priceIncrement + (supply * priceIncrement) / scaleFactor;
+
+  const endSupply = supply + amount;
+  const endPrice =
+    priceIncrement + (endSupply * priceIncrement) / scaleFactor;
+
+  const averagePrice = (startPrice + endPrice) / 2n;
+
+  return (averagePrice * amount) / scaleFactor;
+}
+
+/**
+ * Convenience helper for the unit buy price (amount = 1).
+ * Returns the price to buy exactly 1 fragment at the given supply.
+ */
+export function computeUnitBuyPriceWeiFromSupply(
+  supplyLike: string | number | bigint,
+): bigint {
+  return computeBuyPriceWeiFromSupply(supplyLike, 1n);
 }
 
 /**

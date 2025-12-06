@@ -39,9 +39,14 @@ import { profileManager } from './services/profile-manager';
 import { fetchPersonaPostWithReplies } from './api/post';
 
 // Google logout
-import { TrendingPersonaFragment } from '../shared/types/persona-fragments';
+import type { TrendingPersonaFragment } from '../shared/types/persona-fragments';
 import { fetchTrendingPersonaFragments } from './api/persona-fragments';
 import { googleLogout } from './auth/google-login';
+
+import {
+  computeUnitBuyPriceWeiFromSupply,
+  formatEthLabelFromWei,
+} from '../shared/utils/pricing';
 
 // =====================
 //  Environment / Session / WebView
@@ -156,7 +161,7 @@ function applyProfileAvatar(profile: Profile | null) {
   const rawAddr = hasToken ? tokenManager.getAddress() : undefined;
 
   buttons.forEach((btn) => {
-    // reset content every time to avoid duplicated icons
+    // Reset content every time to avoid duplicated icons
     btn.innerHTML = '';
 
     // Not signed in → default icon
@@ -203,7 +208,6 @@ function applyProfileAvatar(profile: Profile | null) {
       img.style.objectFit = 'cover';
       avatarContainer.appendChild(img);
     } else {
-      // fallback 이 거의 없겠지만 혹시나
       const span = document.createElement('span');
       span.textContent =
         profile?.nickname?.trim().charAt(0).toUpperCase() ??
@@ -325,10 +329,7 @@ async function tryAutoLinkIfNeeded(
   const walletHasToken = tokenManager.has();
 
   if (meResult?.ok && meResult.wallet_address && meResult.token) {
-    tokenManager.set(
-      meResult.token,
-      meResult.wallet_address as `0x${string}`,
-    );
+    tokenManager.set(meResult.token, meResult.wallet_address as `0x${string}`);
     return 'ok';
   }
 
@@ -350,11 +351,7 @@ async function tryAutoLinkIfNeeded(
           );
         } else {
           const refreshed = await oauth2Me();
-          if (
-            refreshed.ok &&
-            refreshed.token &&
-            refreshed.wallet_address
-          ) {
+          if (refreshed.ok && refreshed.token && refreshed.wallet_address) {
             tokenManager.set(
               refreshed.token,
               refreshed.wallet_address as `0x${string}`,
@@ -452,8 +449,7 @@ function setupRoutes() {
 
     const postId = Number(id);
     if (!Number.isFinite(postId) || postId <= 0) {
-      postContent.innerHTML =
-        '<div class="error">Invalid post id.</div>';
+      postContent.innerHTML = '<div class="error">Invalid post id.</div>';
       return;
     }
 
@@ -503,9 +499,10 @@ function shortenEthAddress(addr: string): string {
 }
 
 /**
- * 홈 트렌딩 카드 렌더링
- * - avatarUrl이 있으면 이미지, 없으면 address-avatar
- * - 이름이 지갑 주소면 축약 표시
+ * Render the "home trending" persona cards on the landing screen.
+ * For price we no longer use lastPrice.
+ * Instead, we compute the current unit buy price from supply
+ * using the same formula as PricingLib.getBuyPrice(supply, 1, priceIncrement, 1).
  */
 function renderHomeTrendingCards(
   personas: TrendingPersonaFragment[],
@@ -527,9 +524,16 @@ function renderHomeTrendingCards(
     card.className = 'home-trending-card';
     card.setAttribute('data-profile-id', p.personaAddress);
 
-    const priceEth = (() => {
+    // Compute unit buy price from supply.
+    // Adjust `p.currentSupply` if your fragment uses a different field name.
+    const supplyRaw =
+      (p as any).currentSupply ?? '0';
+
+    const priceEthLabel = (() => {
       try {
-        return `${Number(formatEther(BigInt(p.lastPrice))).toFixed(4)} ETH`;
+        const unitPriceWei = computeUnitBuyPriceWeiFromSupply(supplyRaw);
+        const { label } = formatEthLabelFromWei(unitPriceWei);
+        return label;
       } catch {
         return '-';
       }
@@ -579,12 +583,14 @@ function renderHomeTrendingCards(
         <div class="home-card-avatar"></div>
         <div class="home-card-meta">
           <div class="home-card-name">${displayName}</div>
-          <div class="home-card-address">${shortenEthAddress(p.personaAddress)}</div>
+          <div class="home-card-address">${shortenEthAddress(
+      p.personaAddress,
+    )}</div>
         </div>
       </div>
 
       <div class="home-card-price-label">Price</div>
-      <div class="home-card-price-value">${priceEth}</div>
+      <div class="home-card-price-value">${priceEthLabel}</div>
 
       <div class="home-card-stats-row">
         <div>
@@ -626,13 +632,11 @@ function renderHomeTrendingCards(
           img.className = 'home-card-avatar-img';
           avatarSlot.appendChild(img);
         } catch {
-          const initial =
-            displayName.trim().charAt(0).toUpperCase() || 'P';
+          const initial = displayName.trim().charAt(0).toUpperCase() || 'P';
           avatarSlot.textContent = initial;
         }
       } else {
-        const initial =
-          displayName.trim().charAt(0).toUpperCase() || 'P';
+        const initial = displayName.trim().charAt(0).toUpperCase() || 'P';
         avatarSlot.textContent = initial;
       }
     }
@@ -827,7 +831,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Trending persona cards → /profile/:id
+    // Trending persona cards → /profile/:id (SSR fallback)
     const personaCards = document.querySelectorAll('[data-profile-id]');
     personaCards.forEach((card) => {
       card.addEventListener('click', (e) => {

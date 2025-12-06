@@ -6,6 +6,10 @@ import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
 import { formatEther, getAddress } from 'viem';
 import type { TrendingPersonaFragment } from '../../shared/types/persona-fragments';
 import {
+  computeUnitBuyPriceWeiFromSupply,
+  formatEthLabelFromWei,
+} from '../../shared/utils/pricing';
+import {
   ExploreSortKey,
   fetchTrendingPersonaFragments,
 } from '../api/persona-fragments';
@@ -38,7 +42,10 @@ function shortenEthAddress(addr: string, head = 6, tail = 4) {
   return `${addr.slice(0, head)}...${addr.slice(-tail)}`;
 }
 
-function normalizePersonaName(name: string | null | undefined, addr: string): string {
+function normalizePersonaName(
+  name: string | null | undefined,
+  addr: string,
+): string {
   const base = name?.trim();
   if (base && base.length > 0) {
     if (base.startsWith('0x') && base.length > 10) {
@@ -124,10 +131,7 @@ export class ExploreTab {
 
     this.listEl = el('div.explore-list');
 
-    const countEl = el(
-      'div.explore-count',
-      el('span', 'Loading personas...'),
-    );
+    const countEl = el('div.explore-count', el('span', 'Loading personas...'));
 
     const controls = el('div.explore-controls', search, tabs, countEl);
 
@@ -165,16 +169,28 @@ export class ExploreTab {
     }
   }
 
+  /**
+   * Builds PersonaData from TrendingPersonaFragment.
+   * For price we do NOT use lastPrice anymore.
+   * Instead, we compute the unit buy price using the same formula
+   * as PricingLib.getBuyPrice(supply, 1, priceIncrement, 1),
+   * mirrored by computeUnitBuyPriceWeiFromSupply.
+   *
+   * Assumes TrendingPersonaFragment has a `currentSupply` field
+   * (string | number | bigint). If not, adjust the field name.
+   */
   private fromTrendingFragment(p: TrendingPersonaFragment): PersonaData {
+    const supplyRaw =
+      // Adjust this field name to match your actual fragment type
+      (p as any).currentSupply ?? '0';
+
     let priceEth = 0;
     let priceLabel = '-';
     try {
-      const v = Number(formatEther(BigInt(p.lastPrice)));
-      priceEth = Number.isFinite(v) ? v : 0;
-      priceLabel =
-        priceEth >= 1000
-          ? `${priceEth.toFixed(0)} ETH`
-          : `${priceEth.toFixed(4)} ETH`;
+      const unitPriceWei = computeUnitBuyPriceWeiFromSupply(supplyRaw);
+      const { value, label } = formatEthLabelFromWei(unitPriceWei);
+      priceEth = value;
+      priceLabel = label;
     } catch {
       // ignore
     }
@@ -237,10 +253,11 @@ export class ExploreTab {
       return;
     }
 
-    this.filtered = this.personas.filter((p) =>
-      p.name.toLowerCase().includes(q) ||
-      p.role.toLowerCase().includes(q) ||
-      p.id.toLowerCase().includes(q),
+    this.filtered = this.personas.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.role.toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q),
     );
   }
 
@@ -334,9 +351,9 @@ export class ExploreTab {
               el('span.name', p.name),
               p.verified
                 ? el('sl-icon', {
-                    name: 'patch-check-fill',
-                    class: 'icon-verified',
-                  })
+                  name: 'patch-check-fill',
+                  class: 'icon-verified',
+                })
                 : null,
             ),
             el('span.role', p.role),
@@ -348,7 +365,9 @@ export class ExploreTab {
           this.createStatCol(
             '24h',
             p.changeLabel,
-            p.changePct24h !== null && p.changePct24h > 0 ? 'success' : 'default',
+            p.changePct24h !== null && p.changePct24h > 0
+              ? 'success'
+              : 'default',
           ),
           this.createStatCol('Holders', p.holdersLabel),
           this.createStatCol('Volume', p.volumeLabel),
