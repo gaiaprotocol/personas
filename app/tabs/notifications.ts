@@ -1,5 +1,7 @@
-import { createJazzicon, tokenManager } from '@gaiaprotocol/client-common';
+import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
+import { tokenManager } from '@gaiaprotocol/client-common';
 import { el } from '@webtaku/el';
+import { getAddress } from 'viem';
 import {
   fetchNotificationsApi,
   markAllNotificationsAsReadApi,
@@ -9,24 +11,20 @@ import {
 import './notifications.css';
 
 type NotificationVerbType =
-  // Post
   | 'post.like'
   | 'post.comment'
   | 'post.reply'
   | 'post.repost'
   | 'post.quote'
   | 'post.mention'
-  // Persona / trade
   | 'persona.buy'
   | 'persona.sell'
   | 'trade.buy'
   | 'trade.sell'
-  // User / chat / system
   | 'user.follow'
   | 'chat.reply'
   | 'chat.reaction'
   | 'system.announcement'
-  // Fallback
   | string;
 
 interface NotificationItemUI {
@@ -49,13 +47,12 @@ function shortenAddress(addr: string | null): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-function isEthAddress(value: string | null | undefined): boolean {
+function isEthAddress(value: string | null | undefined): value is `0x${string}` {
   if (!value) return false;
   const v = value.trim();
   return /^0x[0-9a-fA-F]{40}$/.test(v);
 }
 
-/** createdAt(unix seconds) → "2 hours ago" style string */
 function formatTimeAgo(createdAtSec: number): string {
   const nowMs = Date.now();
   const createdMs = createdAtSec * 1000;
@@ -74,9 +71,6 @@ function formatTimeAgo(createdAtSec: number): string {
   return `${diffMonth} month${diffMonth > 1 ? 's' : ''} ago`;
 }
 
-/**
- * Convert RawNotification from server to NotificationItemUI for UI rendering.
- */
 function mapRawToUI(n: RawNotification): NotificationItemUI {
   const type = n.notificationType as NotificationVerbType;
 
@@ -112,9 +106,7 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
   let preview: string | null = null;
   let navigatePath: string | null = null;
 
-  // (아래 switch는 질문에 올려주신 것과 동일, 생략 없이 사용)
   switch (type) {
-    /* ----- Post-related ----- */
     case 'post.like':
       verb = 'liked your post';
       preview = (meta.postPreview as string) ?? null;
@@ -149,7 +141,6 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
       if (n.targetId) navigatePath = `/post/${n.targetId}`;
       break;
 
-    /* ----- Persona / trade ----- */
     case 'persona.buy':
       verb = 'bought fragments of your persona';
       preview = (meta.message as string) ?? null;
@@ -179,7 +170,6 @@ function mapRawToUI(n: RawNotification): NotificationItemUI {
       }
       break;
 
-    /* ----- User / chat / system ----- */
     case 'user.follow':
       verb = 'started following you';
       break;
@@ -239,7 +229,6 @@ type NotificationTypeUI =
   | 'other';
 
 function mapTypeToVisual(type: NotificationVerbType): NotificationTypeUI {
-  // Post
   if (type.startsWith('post.like')) return 'like';
   if (
     type.startsWith('post.comment') ||
@@ -251,7 +240,6 @@ function mapTypeToVisual(type: NotificationVerbType): NotificationTypeUI {
   }
   if (type.startsWith('post.mention')) return 'mention';
 
-  // Persona / trade → treat as "buy" for the green arrow icon
   if (
     type.startsWith('persona.buy') ||
     type.startsWith('persona.sell') ||
@@ -261,7 +249,6 @@ function mapTypeToVisual(type: NotificationVerbType): NotificationTypeUI {
     return 'buy';
   }
 
-  // User / chat / system
   if (type.startsWith('user.follow')) return 'follow';
   if (type.startsWith('chat.')) return 'comment';
   if (type.startsWith('system.')) return 'system';
@@ -309,8 +296,6 @@ export class NotificationsTab {
     await this.fetchAndRender();
   }
 
-  /* ---------- Header ---------- */
-
   private buildHeader(): HTMLElement {
     const title = el('h2.notifications-title', 'Notifications');
 
@@ -336,8 +321,6 @@ export class NotificationsTab {
 
     return el('div.notifications-header', left, right);
   }
-
-  /* ---------- Fetch data ---------- */
 
   private async fetchAndRender() {
     const token = tokenManager.getToken?.();
@@ -381,10 +364,6 @@ export class NotificationsTab {
     }
   }
 
-  /**
-   * 서버에서 내려준 전체 unreadCount 를 우선 사용.
-   * 없으면 현재 페이지 기준으로 계산.
-   */
   private updateUnreadSummary(totalUnread?: number) {
     const unreadCount =
       typeof totalUnread === 'number'
@@ -415,14 +394,11 @@ export class NotificationsTab {
       const res = await markAllNotificationsAsReadApi(token);
       this.items = this.items.map((n) => ({ ...n, unread: false }));
       this.renderList();
-      // 서버 응답에 unreadCount 가 있다면 사용, 없으면 0 으로 처리
       this.updateUnreadSummary((res as any).unreadCount ?? 0);
     } catch (err) {
       console.error('[NotificationsTab] markAll error', err);
     }
   }
-
-  /* ---------- List rendering ---------- */
 
   private renderList() {
     this.listEl.innerHTML = '';
@@ -451,10 +427,17 @@ export class NotificationsTab {
       img.className = 'notification-avatar-img';
       avatar.appendChild(img);
     } else if (isEthAddress(item.actorAddress)) {
-      const jazz = createJazzicon(item.actorAddress as `0x${string}`);
-      (jazz as HTMLElement).style.width = '100%';
-      (jazz as HTMLElement).style.height = '100%';
-      avatar.appendChild(jazz as HTMLElement);
+      try {
+        const checksum = getAddress(item.actorAddress as `0x${string}`);
+        const src = getAddressAvatarDataUrl(checksum as `0x${string}`);
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = item.actorName || 'Profile';
+        img.className = 'notification-avatar-img';
+        avatar.appendChild(img);
+      } catch {
+        avatar.textContent = item.actorInitial;
+      }
     } else {
       avatar.textContent = item.actorInitial;
     }
@@ -507,20 +490,17 @@ export class NotificationsTab {
   private async handleItemClick(item: NotificationItemUI) {
     const token = tokenManager.getToken?.();
 
-    // Immediately update UI
     if (item.unread) {
       item.unread = false;
       this.renderList();
       this.updateUnreadSummary();
 
-      // Persist read state to server (ignore failures)
       if (token) {
         try {
           const res = await markNotificationsAsReadApi({
             token,
             id: item.id,
           });
-          // 서버 unreadCount 가 내려오면 그걸로 동기화
           if ((res as any).unreadCount != null) {
             this.updateUnreadSummary((res as any).unreadCount);
           }

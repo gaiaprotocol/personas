@@ -1,9 +1,9 @@
+import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
 import { AnyBuilder } from '@webtaku/any-builder';
 import { PersonaPost } from '../types/post';
 import {
-  avatarInitialFromName,
   formatRelativeTimeFromSeconds,
-  shortenAddress,
+  shortenAddress
 } from '../utils/formatting';
 
 export interface PostViewProps {
@@ -38,7 +38,6 @@ export function postCard<B extends AnyBuilder>(
   const displayName = normalizeDisplayName(post.authorNickname, post.author);
   const handle = `@${shortAddress}`;
   const time = formatRelativeTimeFromSeconds(post.createdAt);
-  const avatarInitial = avatarInitialFromName(displayName);
 
   const extraClass =
     variant === 'profile'
@@ -47,24 +46,21 @@ export function postCard<B extends AnyBuilder>(
         ? 'post-card--compact'
         : 'post-card--feed';
 
-  const avatarNode = post.authorAvatarUrl
-    ? b(
-      'div.post-card-avatar',
-      {
-        'data-author-address': post.author,
-      } as any,
-      b('img.post-card-avatar-img', {
-        src: post.authorAvatarUrl,
-        alt: displayName,
-      }),
-    )
-    : b(
-      'div.post-card-avatar',
-      {
-        'data-author-address': post.author,
-      } as any,
-      avatarInitial,
-    );
+  const avatarSrc =
+    post.authorAvatarUrl && post.authorAvatarUrl.trim().length > 0
+      ? post.authorAvatarUrl
+      : getAddressAvatarDataUrl(post.author as `0x${string}`);
+
+  const avatarNode = b(
+    'div.post-card-avatar',
+    {
+      'data-author-address': post.author,
+    } as any,
+    b('img.post-card-avatar-img', {
+      src: avatarSrc,
+      alt: displayName,
+    }),
+  );
 
   return b(
     'article.post-card',
@@ -126,27 +122,23 @@ export function postDetailMain<B extends AnyBuilder>(
   const shortAddress = shortenAddress(post.author);
   const displayName = normalizeDisplayName(post.authorNickname, post.author);
   const handle = `@${shortAddress}`;
-  const avatarInitial = avatarInitialFromName(displayName);
   const time = formatRelativeTimeFromSeconds(post.createdAt);
 
-  const avatarNode = post.authorAvatarUrl
-    ? b(
-      'div.post-avatar',
-      {
-        'data-author-address': post.author,
-      } as any,
-      b('img.post-avatar-img', {
-        src: post.authorAvatarUrl,
-        alt: displayName,
-      }),
-    )
-    : b(
-      'div.post-avatar',
-      {
-        'data-author-address': post.author,
-      } as any,
-      avatarInitial,
-    );
+  const avatarSrc =
+    post.authorAvatarUrl && post.authorAvatarUrl.trim().length > 0
+      ? post.authorAvatarUrl
+      : getAddressAvatarDataUrl(post.author as `0x${string}`);
+
+  const avatarNode = b(
+    'div.post-avatar',
+    {
+      'data-author-address': post.author,
+    } as any,
+    b('img.post-avatar-img', {
+      src: avatarSrc,
+      alt: displayName,
+    }),
+  );
 
   return b(
     'section.post-main',
@@ -243,27 +235,23 @@ export function replyList<B extends AnyBuilder>(
     const shortAddress = shortenAddress(rp.author);
     const displayName = normalizeDisplayName(rp.authorNickname, rp.author);
     const handle = `@${shortAddress}`;
-    const avatarInitial = avatarInitialFromName(displayName);
     const time = formatRelativeTimeFromSeconds(rp.createdAt);
 
-    const avatarNode = rp.authorAvatarUrl
-      ? b(
-        'div.post-reply-avatar-small',
-        {
-          'data-author-address': rp.author,
-        } as any,
-        b('img.post-reply-avatar-small-img', {
-          src: rp.authorAvatarUrl,
-          alt: displayName,
-        }),
-      )
-      : b(
-        'div.post-reply-avatar-small',
-        {
-          'data-author-address': rp.author,
-        } as any,
-        avatarInitial,
-      );
+    const avatarSrc =
+      rp.authorAvatarUrl && rp.authorAvatarUrl.trim().length > 0
+        ? rp.authorAvatarUrl
+        : getAddressAvatarDataUrl(rp.author as `0x${string}`);
+
+    const avatarNode = b(
+      'div.post-reply-avatar-small',
+      {
+        'data-author-address': rp.author,
+      } as any,
+      b('img.post-reply-avatar-small-img', {
+        src: avatarSrc,
+        alt: displayName,
+      }),
+    );
 
     return b(
       'div.post-reply-item',
@@ -309,9 +297,8 @@ export function replyList<B extends AnyBuilder>(
   );
 }
 
-/** 답글 작성 컴포저 */
+/** 답글 작성 컴포저 (아바타는 클라이언트에서 교체용) */
 export function replyComposer<B extends AnyBuilder>(b: B) {
-  // 아바타 영역에 data-role 만 심어두고, 실제 Jazzicon은 클라이언트에서 교체
   return b(
     'section.post-reply-composer',
     b('div.post-reply-avatar', {

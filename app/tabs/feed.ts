@@ -2,8 +2,10 @@ import '@shoelace-style/shoelace';
 import { el } from '@webtaku/el';
 import './feed.css';
 
-import { createJazzicon } from '@gaiaprotocol/client-common';
-import { PersonaPost } from '../../shared/types/post';
+import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
+import { getAddress } from 'viem';
+import type { PersonaPost } from '../../shared/types/post';
+import type { Profile } from '../../shared/types/profile';
 import { postCard } from '../../shared/ui/post';
 import {
   createPersonaPostApi,
@@ -14,22 +16,17 @@ import {
   unlikePersonaPostApi,
   updatePersonaPostApi,
 } from '../api/post';
+import { fetchMyProfile } from '../api/profile';
 
 const MAX_LENGTH = 280;
 
 export interface FeedTabOptions {
   navigate: (path: string) => void;
 
-  /** 현재 로그인한 주소 (내 글 여부 판단용) */
   currentAccount?: string | null;
-
-  /** 현재 표시 이름 (없으면 주소 축약) */
   currentDisplayName?: string | null;
-
-  /** 현재 핸들 (@you 등, 없으면 주소 축약) */
   currentHandle?: string | null;
 
-  /** 항상 최신 토큰을 얻기 위한 함수 */
   getAuthToken: () => string | null | undefined;
 }
 
@@ -62,22 +59,18 @@ export class FeedTab {
     this.el = el('section.feed-wrapper');
     const inner = el('div.feed-inner');
 
-    /* 헤더 */
     const header = el(
       'div.feed-header',
       el('h2.feed-header-title', 'Feed'),
       el('p.feed-header-sub', 'See what personas are sharing with their holders'),
     );
 
-    /* 작성 폼 */
     const composer = this.buildComposer();
 
-    /* 상태 영역 */
     this.loadingEl = el('div.feed-status.feed-status-loading', 'Loading feed...');
     this.errorEl = el('div.feed-status.feed-status-error');
     this.errorEl.style.display = 'none';
 
-    /* 리스트 컨테이너 */
     this.listEl = el('div.feed-list');
 
     inner.append(
@@ -91,7 +84,6 @@ export class FeedTab {
     );
     this.el.append(inner);
 
-    // 초기 로딩
     this.loadInitialPosts().catch((err) => {
       console.error(err);
       this.showError('Failed to load feed.');
@@ -122,17 +114,13 @@ export class FeedTab {
 
     const composerAvatar = el('div.feed-composer-avatar') as HTMLElement;
 
-    // 아바타: 주소가 있으면 Jazzicon, 없으면 이니셜
-    const account = this.options.currentAccount;
-    if (account && account.startsWith('0x')) {
-      const jazz = createJazzicon(account as `0x${string}`);
-      (jazz as HTMLElement).style.width = '100%';
-      (jazz as HTMLElement).style.height = '100%';
-      composerAvatar.appendChild(jazz as HTMLElement);
-    } else {
-      const avatarInitial = (displayName || '?')[0]?.toUpperCase() ?? '?';
-      composerAvatar.textContent = avatarInitial;
-    }
+    const defaultInitial =
+      (displayName || '?')[0]?.toUpperCase() ?? '?';
+    composerAvatar.textContent = defaultInitial;
+
+    this.loadComposerAvatar(composerAvatar, defaultInitial).catch((err) => {
+      console.error('[FeedTab] loadComposerAvatar error', err);
+    });
 
     this.composerInput = el('textarea.feed-composer-input', {
       placeholder: "What's happening?",
@@ -166,7 +154,6 @@ export class FeedTab {
 
     const wrapper = el('div.feed-composer', composerAvatar, main);
 
-    // 로그인 안 되어 있으면 비활성화
     if (!this.options.getAuthToken()) {
       this.composerInput.disabled = true;
       this.composerButton.disabled = true;
@@ -190,6 +177,47 @@ export class FeedTab {
     );
 
     return wrapper;
+  }
+
+  private async loadComposerAvatar(
+    avatarEl: HTMLElement,
+    fallbackInitial: string,
+  ) {
+    const token = this.options.getAuthToken();
+    const account = this.options.currentAccount;
+
+    let avatarUrl: string | null = null;
+
+    if (token) {
+      try {
+        const profile: Profile = await fetchMyProfile(token);
+        if (profile.avatarUrl && profile.avatarUrl.trim().length > 0) {
+          avatarUrl = profile.avatarUrl;
+        }
+      } catch (err) {
+        console.error('[FeedTab] fetchMyProfile failed', err);
+      }
+    }
+
+    if (!avatarUrl && account && account.startsWith('0x')) {
+      try {
+        const checksum = getAddress(account as `0x${string}`);
+        avatarUrl = getAddressAvatarDataUrl(checksum as `0x${string}`);
+      } catch {
+        // ignore
+      }
+    }
+
+    if (avatarUrl) {
+      avatarEl.innerHTML = '';
+      const img = document.createElement('img');
+      img.src = avatarUrl;
+      img.alt = 'Your avatar';
+      img.className = 'feed-composer-avatar-img';
+      avatarEl.appendChild(img);
+    } else {
+      avatarEl.textContent = fallbackInitial;
+    }
   }
 
   private handleComposerInput() {
@@ -294,7 +322,6 @@ export class FeedTab {
         !!currentAccount &&
         item.post.author.toLowerCase() === currentAccount.toLowerCase();
 
-      // shared/ui/post.ts 의 postCard 사용
       const node = postCard(el as any, {
         post: item.post,
         isMine,
@@ -310,12 +337,10 @@ export class FeedTab {
   private attachCardHandlers(card: HTMLElement, item: FeedItemState) {
     const postId = item.post.id;
 
-    // 카드 전체 클릭 → 상세로
     card.addEventListener('click', () => {
       this.options.navigate(`/post/${postId}`);
     });
 
-    // Reply 버튼
     const replyBtn = card.querySelector<HTMLButtonElement>(
       '[data-hook="post-reply"]',
     );
@@ -326,7 +351,6 @@ export class FeedTab {
       });
     }
 
-    // Repost 버튼
     const repostBtn = card.querySelector<HTMLButtonElement>(
       '[data-hook="post-repost"]',
     );
@@ -337,7 +361,6 @@ export class FeedTab {
       });
     }
 
-    // Like 버튼
     const likeBtn = card.querySelector<HTMLButtonElement>(
       '[data-hook="post-like"]',
     );
@@ -353,7 +376,6 @@ export class FeedTab {
       });
     }
 
-    // More (내 글일 때만 존재)
     const moreBtn = card.querySelector<HTMLButtonElement>(
       '[data-hook="post-more"]',
     );
@@ -397,7 +419,6 @@ export class FeedTab {
     }
   }
 
-  /** 리포스트: 원문 content를 그대로 복제해서 repostOfId로 새 포스트 생성 */
   private async handleRepost(
     item: FeedItemState,
     repostBtn?: HTMLButtonElement,
@@ -431,9 +452,6 @@ export class FeedTab {
       if (repostBtn) {
         repostBtn.textContent = `⤴ ${item.post.repostCount ?? 0}`;
       }
-
-      // 필요하다면 여기에서 새 리포스트를 feed 상단에 추가하는 로직도 넣을 수 있음
-      // this.items.unshift({ post: created, liked: false }); this.renderPosts();
     } catch (err: any) {
       console.error(err);
       alert(err?.message ?? 'Failed to repost.');

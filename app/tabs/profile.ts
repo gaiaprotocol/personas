@@ -1,7 +1,8 @@
 import { el } from '@webtaku/el';
 import { formatEther, getAddress } from 'viem';
 
-import { createJazzicon, tokenManager, wagmiConfig } from '@gaiaprotocol/client-common';
+import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
+import { tokenManager, wagmiConfig } from '@gaiaprotocol/client-common';
 import { watchContractEvent } from 'wagmi/actions';
 
 import { PersonaFragments } from '../../shared/types/persona-fragments';
@@ -30,7 +31,6 @@ export class ProfileTab {
     personaFragments: PersonaFragments | null,
     navigate?: (path: string) => void,
   ) {
-    // SSR/공통 템플릿으로 기본 화면 먼저 렌더
     this.el = profileTemplate(
       el,
       profile,
@@ -41,33 +41,25 @@ export class ProfileTab {
     this.navigate = navigate;
     this.setupInternalLinks();
 
-    // 아바타를 Jazzicon 기반으로 교체
     this.applyProfileAvatar(profile);
     this.applyPostCardAvatars(posts);
 
-    // 프로필 내 포스트 카드 클릭 → 상세/모달
     this.setupPostCardClicks();
-
-    // 거래 패널 mount (소셜 링크 → Stats → Trade → User CTA → Posts 순서)
     this.mountTradePanel(profile);
 
-    // 보유량 / 채팅방 CTA
     this.loadUserHoldingOrChatCTA(profile).catch((err) => {
       console.error('[ProfileTab] failed to load user holding/chat CTA', err);
     });
 
-    // 온체인 가격/공급량 갱신 (SSR 값 덮어쓰기)
     this.loadOnchainStats(profile).catch((err) => {
       console.error('[ProfileTab] failed to load on-chain stats', err);
     });
 
-    // TradeExecuted 이벤트 구독 → 다른 유저의 거래도 실시간 반영
     this.subscribeTradeEvents(profile).catch((err) => {
       console.error('[ProfileTab] failed to subscribe trade events', err);
     });
   }
 
-  /** /로 시작하는 내부 링크만 SPA 라우팅으로 처리 */
   private setupInternalLinks() {
     if (!this.navigate) return;
 
@@ -84,42 +76,43 @@ export class ProfileTab {
     });
   }
 
-  /** 프로필 메인 아바타를 Jazzicon으로 교체 */
   private applyProfileAvatar(profile: Profile) {
     const container = this.el.querySelector<HTMLElement>('.profile-avatar');
     if (!container) return;
 
     container.innerHTML = '';
 
-    if (profile.avatarUrl) {
+    let src: string | null = null;
+
+    if (profile.avatarUrl && profile.avatarUrl.trim().length > 0) {
+      src = profile.avatarUrl;
+    } else if (profile.account && profile.account.startsWith('0x')) {
+      try {
+        const checksum = getAddress(profile.account as `0x${string}`);
+        src = getAddressAvatarDataUrl(checksum as `0x${string}`);
+      } catch {
+        // ignore
+      }
+    }
+
+    if (src) {
       const img = document.createElement('img');
-      img.src = profile.avatarUrl;
+      img.src = src;
       img.alt = profile.nickname || 'Profile';
       img.className = 'profile-avatar-img';
       img.style.width = '100%';
       img.style.height = '100%';
       img.style.objectFit = 'cover';
       container.appendChild(img);
-      return;
+    } else {
+      const initial =
+        profile.nickname?.trim().charAt(0).toUpperCase() ??
+        profile.account.trim().charAt(0).toUpperCase() ??
+        'P';
+      container.textContent = initial;
     }
-
-    if (profile.account && profile.account.startsWith('0x')) {
-      const jazz = createJazzicon(profile.account as `0x${string}`);
-      (jazz as HTMLElement).style.width = '100%';
-      (jazz as HTMLElement).style.height = '100%';
-      container.appendChild(jazz as HTMLElement);
-      return;
-    }
-
-    // 주소가 아니면 이니셜
-    const initial =
-      profile.nickname?.trim().charAt(0).toUpperCase() ??
-      profile.account.trim().charAt(0).toUpperCase() ??
-      'P';
-    container.textContent = initial;
   }
 
-  /** Recent Posts 카드 내 각 포스트 아바타를 Jazzicon으로 교체 */
   private applyPostCardAvatars(posts: PersonaPost[]) {
     if (!posts.length) return;
 
@@ -141,22 +134,29 @@ export class ProfileTab {
       const avatar = card.querySelector<HTMLElement>('.post-card-avatar');
       if (!avatar) return;
 
-      // 서버에서 avatarUrl 이미지가 이미 들어있다면 그대로 둔다
       if (avatar.querySelector('img')) return;
 
       avatar.innerHTML = '';
 
-      if (post.authorAvatarUrl) {
+      let src: string | null = null;
+
+      if (post.authorAvatarUrl && post.authorAvatarUrl.trim().length > 0) {
+        src = post.authorAvatarUrl;
+      } else if (post.author && post.author.startsWith('0x')) {
+        try {
+          const checksum = getAddress(post.author as `0x${string}`);
+          src = getAddressAvatarDataUrl(checksum as `0x${string}`);
+        } catch {
+          // ignore
+        }
+      }
+
+      if (src) {
         const img = document.createElement('img');
-        img.src = post.authorAvatarUrl;
+        img.src = src;
         img.alt = post.authorNickname || 'Profile';
         img.className = 'post-card-avatar-img';
         avatar.appendChild(img);
-      } else if (post.author && post.author.startsWith('0x')) {
-        const jazz = createJazzicon(post.author as `0x${string}`);
-        (jazz as HTMLElement).style.width = '100%';
-        (jazz as HTMLElement).style.height = '100%';
-        avatar.appendChild(jazz as HTMLElement);
       } else {
         const initial =
           (post.authorNickname || 'U').trim().charAt(0).toUpperCase() || 'U';
@@ -165,11 +165,6 @@ export class ProfileTab {
     });
   }
 
-  /**
-   * 프로필의 "Recent Posts" 카드 내 포스트 클릭 처리
-   * - 데스크탑: /post/:id 로 navigate
-   * - 모바일(<= 768px): window 에 open-post-modal 이벤트 디스패치
-   */
   private setupPostCardClicks() {
     const cards = this.el.querySelectorAll<HTMLElement>('[data-hook="post-card"]');
 
@@ -206,10 +201,6 @@ export class ProfileTab {
     });
   }
 
-  /**
-   * 프로필 내용 안에 거래 패널을 mount
-   * - connectCard(소셜) 다음, statsRow 다음에 삽입
-   */
   private mountTradePanel(profile: Profile) {
     const contentOffset = this.el.querySelector<HTMLElement>(
       '.profile-content-offset',
@@ -248,28 +239,21 @@ export class ProfileTab {
     });
   }
 
-  /**
-   * 클라이언트에서 스마트 컨트랙트 호출해서
-   * - Fragment Price (1개 기준)
-   * - Supply
-   * 를 프로필 상단 Stats 영역에 주입
-   */
   private async loadOnchainStats(profile: Profile) {
     try {
       const account = profile.account;
 
-      // EVM 주소 형태가 아니면 스킵
       if (!account || !account.startsWith('0x')) return;
 
       const personaAddress = account as Address;
 
       const [priceWei, supply] = await Promise.all([
-        getBuyPrice(personaAddress, 1n), // 1 fragment 기준 가격 (wei)
-        getPersonaSupply(personaAddress), // 총 공급량 (bigint)
+        getBuyPrice(personaAddress, 1n),
+        getPersonaSupply(personaAddress),
       ]);
 
-      // ===== Fragment Price 채우기 =====
       const priceEth = formatEther(priceWei);
+
       const priceElement = this.el.querySelector<HTMLElement>(
         '[data-role="fragment-price"]',
       );
@@ -277,7 +261,6 @@ export class ProfileTab {
         priceElement.textContent = `${priceEth} ETH`;
       }
 
-      // ===== Supply 채우기 =====
       const supplyElement = this.el.querySelector<HTMLElement>(
         '[data-role="fragment-supply"]',
       );
@@ -292,16 +275,9 @@ export class ProfileTab {
       }
     } catch (err) {
       console.error('[ProfileTab] loadOnchainStats error', err);
-      // 실패해도 SSR/DB 값(또는 "–") 그대로 두고 조용히 실패
     }
   }
 
-  /**
-   * 현재 로그인한 trader 의 페르소나 조각 보유 여부/owner 여부에 따라
-   * - balance > 0: "You hold X fragments"
-   * - balance === 0 && creator: "You are the creator"
-   * - 둘 다 아니면: UI 숨김
-   */
   private async loadUserHoldingOrChatCTA(profile: Profile) {
     const ctaRoot = this.el.querySelector<HTMLElement>(
       '[data-role="user-fragment-cta-root"]',
@@ -311,7 +287,6 @@ export class ProfileTab {
     try {
       const personaAddress = profile.account as Address;
 
-      // persona 가 EVM 주소가 아니면 UI 자체 제거
       if (!personaAddress || !personaAddress.startsWith('0x')) {
         ctaRoot.remove();
         return;
@@ -319,12 +294,10 @@ export class ProfileTab {
 
       const traderAddress = tokenManager.getAddress?.();
       if (!traderAddress || !traderAddress.startsWith('0x')) {
-        // 지갑 미연결이면 보유/채팅 UI 자체를 감춤
         ctaRoot.remove();
         return;
       }
 
-      // 주소 normalize (checksum)
       const normalizedPersona = getAddress(
         personaAddress as `0x${string}`,
       ) as Address;
@@ -341,13 +314,11 @@ export class ProfileTab {
         normalizedPersona.toLowerCase() === normalizedTrader.toLowerCase();
       const hasBalance = balance > 0n;
 
-      // owner 가 아니고, balance 가 0이면 숨김
       if (!isOwner && !hasBalance) {
         ctaRoot.remove();
         return;
       }
 
-      // BigInt → 보기 좋은 문자열
       const formatBigInt = (value: bigint) => {
         const anyValue = value as any;
         return typeof anyValue.toLocaleString === 'function'
@@ -357,18 +328,15 @@ export class ProfileTab {
 
       const balanceText = formatBigInt(balance);
 
-      // pill 내용 분기
       let pillHTML: string;
 
       if (hasBalance) {
-        // 갖고 있는 개수가 있으면 → count 기준 (creator 여부와 무관)
         pillHTML = `
           You hold
           <span class="profile-user-cta-count">${balanceText}</span>
           fragments
         `;
       } else {
-        // 개수는 없고, creator인 경우
         pillHTML = `You are the creator`;
       }
 
@@ -411,11 +379,6 @@ export class ProfileTab {
     }
   }
 
-  /**
-   * TradeExecuted 이벤트 구독
-   * - persona 인덱스로 필터
-   * - 해당 페르소나에 트레이드 발생 시 stats / CTA 다시 로딩
-   */
   private async subscribeTradeEvents(profile: Profile) {
     const account = profile.account;
     if (!account || !account.startsWith('0x')) return;
@@ -443,9 +406,6 @@ export class ProfileTab {
     this.unsubscribeFns.push(unwatch);
   }
 
-  /**
-   * SPA 환경에서 언마운트 시 호출해주면 좋음
-   */
   destroy() {
     this.unsubscribeFns.forEach((fn) => fn());
     this.unsubscribeFns = [];

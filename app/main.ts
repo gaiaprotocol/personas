@@ -1,5 +1,5 @@
+import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
 import {
-  createJazzicon,
   createRainbowKit,
   logout,
   tokenManager,
@@ -170,8 +170,7 @@ function applyProfileAvatar(profile: Profile | null) {
       return;
     }
 
-    // Signed in → avatar
-    const addr = getAddress(rawAddr || zeroAddress);
+    const checksum = getAddress(rawAddr || zeroAddress);
 
     const avatarContainer = document.createElement('span');
     avatarContainer.className = 'profile-avatar';
@@ -183,19 +182,33 @@ function applyProfileAvatar(profile: Profile | null) {
     avatarContainer.style.borderRadius = '999px';
     avatarContainer.style.overflow = 'hidden';
 
+    let avatarSrc: string | null = null;
+
     if (profile?.avatarUrl) {
+      avatarSrc = profile.avatarUrl;
+    } else {
+      try {
+        avatarSrc = getAddressAvatarDataUrl(checksum as `0x${string}`);
+      } catch {
+        avatarSrc = null;
+      }
+    }
+
+    if (avatarSrc) {
       const img = document.createElement('img');
-      img.src = profile.avatarUrl;
-      img.alt = profile.nickname || 'Profile';
+      img.src = avatarSrc;
+      img.alt = profile?.nickname || 'Profile';
       img.style.width = '100%';
       img.style.height = '100%';
       img.style.objectFit = 'cover';
       avatarContainer.appendChild(img);
     } else {
-      const jazz = createJazzicon(addr);
-      (jazz as HTMLElement).style.width = '100%';
-      (jazz as HTMLElement).style.height = '100%';
-      avatarContainer.appendChild(jazz as HTMLElement);
+      // fallback 이 거의 없겠지만 혹시나
+      const span = document.createElement('span');
+      span.textContent =
+        profile?.nickname?.trim().charAt(0).toUpperCase() ??
+        checksum.slice(2, 3).toUpperCase();
+      avatarContainer.appendChild(span);
     }
 
     btn.appendChild(avatarContainer);
@@ -491,7 +504,7 @@ function shortenEthAddress(addr: string): string {
 
 /**
  * 홈 트렌딩 카드 렌더링
- * - avatarUrl이 있으면 이미지, 없으면 Jazzicon
+ * - avatarUrl이 있으면 이미지, 없으면 address-avatar
  * - 이름이 지갑 주소면 축약 표시
  */
 function renderHomeTrendingCards(
@@ -522,7 +535,6 @@ function renderHomeTrendingCards(
       }
     })();
 
-    // 24h 변화율 포맷팅
     const changeLabel = (() => {
       if (p.change24hPct === null || Number.isNaN(p.change24hPct)) return '—';
 
@@ -538,7 +550,6 @@ function renderHomeTrendingCards(
       return '';
     })();
 
-    // 24h 볼륨 (wei → ETH)
     const volumeEthLabel = (() => {
       try {
         const volWei = BigInt(p.volume24hWei ?? '0');
@@ -596,7 +607,6 @@ function renderHomeTrendingCards(
       <button class="home-card-button" type="button">Open Persona</button>
     `;
 
-    // 아바타 영역에 Jazzicon / 이미지 삽입
     const avatarSlot = card.querySelector<HTMLDivElement>('.home-card-avatar');
     if (avatarSlot) {
       avatarSlot.innerHTML = '';
@@ -607,10 +617,19 @@ function renderHomeTrendingCards(
         img.className = 'home-card-avatar-img';
         avatarSlot.appendChild(img);
       } else if (p.personaAddress && p.personaAddress.startsWith('0x')) {
-        const jazz = createJazzicon(p.personaAddress as `0x${string}`);
-        (jazz as HTMLElement).style.width = '100%';
-        (jazz as HTMLElement).style.height = '100%';
-        avatarSlot.appendChild(jazz as HTMLElement);
+        try {
+          const checksum = getAddress(p.personaAddress as `0x${string}`);
+          const src = getAddressAvatarDataUrl(checksum as `0x${string}`);
+          const img = document.createElement('img');
+          img.src = src;
+          img.alt = displayName || 'Persona';
+          img.className = 'home-card-avatar-img';
+          avatarSlot.appendChild(img);
+        } catch {
+          const initial =
+            displayName.trim().charAt(0).toUpperCase() || 'P';
+          avatarSlot.textContent = initial;
+        }
       } else {
         const initial =
           displayName.trim().charAt(0).toUpperCase() || 'P';

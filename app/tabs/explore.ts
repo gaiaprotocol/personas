@@ -2,8 +2,8 @@ import '@shoelace-style/shoelace';
 import { el } from '@webtaku/el';
 import './explore.css';
 
-import { createJazzicon } from '@gaiaprotocol/client-common';
-import { formatEther } from 'viem';
+import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
+import { formatEther, getAddress } from 'viem';
 import type { TrendingPersonaFragment } from '../../shared/types/persona-fragments';
 import {
   ExploreSortKey,
@@ -47,6 +47,11 @@ function normalizePersonaName(name: string | null | undefined, addr: string): st
     return base;
   }
   return shortenEthAddress(addr);
+}
+
+function isEthAddress(value: string | null | undefined): value is `0x${string}` {
+  if (!value) return false;
+  return /^0x[a-fA-F0-9]{40}$/.test(value.trim());
 }
 
 export class ExploreTab {
@@ -297,11 +302,20 @@ export class ExploreTab {
           class: 'explore-avatar-img',
         }) as HTMLImageElement;
         avatarWrapper.appendChild(img);
-      } else if (p.id && p.id.startsWith('0x')) {
-        const jazz = createJazzicon(p.id as `0x${string}`);
-        (jazz as HTMLElement).style.width = '100%';
-        (jazz as HTMLElement).style.height = '100%';
-        avatarWrapper.appendChild(jazz as HTMLElement);
+      } else if (isEthAddress(p.id)) {
+        try {
+          const checksum = getAddress(p.id as `0x${string}`);
+          const src = getAddressAvatarDataUrl(checksum as `0x${string}`);
+          const img = el('img', {
+            src,
+            alt: p.name || 'Persona',
+            class: 'explore-avatar-img',
+          }) as HTMLImageElement;
+          avatarWrapper.appendChild(img);
+        } catch {
+          const initial = p.name?.trim().charAt(0).toUpperCase() || 'P';
+          avatarWrapper.textContent = initial;
+        }
       } else {
         const initial = p.name?.trim().charAt(0).toUpperCase() || 'P';
         avatarWrapper.textContent = initial;
@@ -320,9 +334,9 @@ export class ExploreTab {
               el('span.name', p.name),
               p.verified
                 ? el('sl-icon', {
-                  name: 'patch-check-fill',
-                  class: 'icon-verified',
-                })
+                    name: 'patch-check-fill',
+                    class: 'icon-verified',
+                  })
                 : null,
             ),
             el('span.role', p.role),

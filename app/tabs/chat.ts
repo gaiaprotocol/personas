@@ -1,4 +1,5 @@
-import { createJazzicon, tokenManager } from '@gaiaprotocol/client-common';
+import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
+import { tokenManager } from '@gaiaprotocol/client-common';
 import { el } from '@webtaku/el';
 import type { PersonaChatMessage } from '../../shared/types/chat';
 import type { PersonaFragmentHolding } from '../../shared/types/persona-fragments';
@@ -13,29 +14,30 @@ import { openLoginModal } from '../modals/login';
 import { createUserProfileModal } from '../modals/profile';
 import './chat.css';
 
-// contract-based holder check
 import { getAddress } from 'viem';
 import {
   getPersonaBalance,
   type Address,
 } from '../contracts/persona-fragments';
 
+import { profileManager } from '../services/profile-manager';
+
 type Sender = 'you' | 'other';
 
 interface ViewChatMessage {
   id: number;
   sender: Sender;
-  author: string; // 표시용 이름 (닉네임 or shortened address)
+  author: string;
   text: string;
-  time: string; // "2:45 PM"
+  time: string;
   avatarUrl: string | null;
   walletAddress?: string | null;
   raw: PersonaChatMessage;
 }
 
 interface ChatThread {
-  id: string; // UI id (persona address)
-  personaAddress: string; // 0x...
+  id: string;
+  personaAddress: string;
   name: string;
   holdersInChat: number;
   unreadCount: number;
@@ -74,7 +76,6 @@ export class ChatTab {
   private mobileMessagesEl: HTMLElement | null = null;
   private mobileThreadId: string | null = null;
 
-  // Router callback
   private navigate?: (path: string) => void;
 
   // WebSocket state
@@ -115,19 +116,16 @@ export class ChatTab {
 
   /**
    * Public helper: open chat room for a specific persona address.
-   * Used by router for /chat/:personaAddress deep link.
-   *
-   * 이제 owner 인 경우 balance 0 이어도 입장 허용.
+   * /chat/:personaAddress 딥링크용
+   * - owner 인 경우 balance 0 이어도 입장 허용
    */
   public async openPersonaRoom(personaAddress: string) {
-    // Ensure base thread list (from backend) is loaded
     await this.ensureThreadsInitialized();
 
     const token = tokenManager.getToken?.();
     const rawUserAddr = tokenManager.getAddress?.();
 
     if (!token || !rawUserAddr) {
-      // Not logged in → open login modal
       openLoginModal();
       return;
     }
@@ -136,7 +134,6 @@ export class ChatTab {
     let user: Address;
 
     try {
-      // Normalize to checksum addresses
       persona = getAddress(personaAddress) as Address;
       user = getAddress(rawUserAddr) as Address;
     } catch {
@@ -147,7 +144,6 @@ export class ChatTab {
       return;
     }
 
-    // On-chain holder check using contract read helper
     try {
       const balance = await getPersonaBalance(persona, user);
       const isOwner = persona.toLowerCase() === user.toLowerCase();
@@ -168,31 +164,42 @@ export class ChatTab {
       return;
     }
 
-    // Find existing thread (from backend holdings list)
     let target = this.threads.find(
       (t) => t.personaAddress.toLowerCase() === persona.toLowerCase(),
     );
 
-    // If not present (e.g. backend index is stale), create a minimal thread
+    // 아직 쓰레드가 없으면 새로 생성
     if (!target) {
-      const fallbackName = this.shortenAddress(persona);
+      const myAddr = tokenManager.getAddress?.();
+      const isMe =
+        myAddr && myAddr.toLowerCase() === persona.toLowerCase();
+      const myProfile = isMe ? profileManager.profile : null;
+
+      const nickname = myProfile?.nickname ?? null;
+
+      const displayName = this.formatDisplayName(
+        persona,
+        nickname ?? persona,
+      );
+
+      const avatarUrl = myProfile?.avatarUrl ?? null;
+
       const avatarInitial =
-        fallbackName.trim().charAt(0).toUpperCase() ||
+        displayName.trim().charAt(0).toUpperCase() ||
         persona.slice(2, 3).toUpperCase() ||
         'P';
 
       target = {
         id: persona,
         personaAddress: persona,
-        name: fallbackName,
-        holdersInChat: 0, // unknown here, could be fetched later if needed
+        name: displayName,
+        holdersInChat: 0,
         unreadCount: 0,
         avatarInitial,
-        avatarUrl: null,
+        avatarUrl,
         messages: [],
       };
 
-      // Prepend to thread lists
       this.threads.unshift(target);
       this.filteredThreads = [...this.threads];
       this.renderThreadList();
@@ -220,11 +227,11 @@ export class ChatTab {
    * Load persona holdings and build chat thread list.
    * - 백엔드 holdings 기반으로 기본 목록 구성
    * - 여기에 "내 지갑 주소"를 페르소나로 하는 방을 강제로 하나 추가 (없으면)
+   *   → 이 때 profileManager.profile 사용해서 이름/아바타 채움
    */
   private async initThreads() {
     const token = tokenManager.getToken?.();
     if (!token) {
-      // Not logged in → keep empty list and rely on CTA in footer
       this.threadListEl.innerHTML = '';
       return;
     }
@@ -235,8 +242,7 @@ export class ChatTab {
       this.threads = holdings.map((h: PersonaFragmentHolding) => {
         const persona = h.personaAddress;
 
-        const rawName =
-          (h as any).name as string | undefined | null;
+        const rawName = (h as any).name as string | undefined | null;
         const displayName = this.formatDisplayName(persona, rawName);
 
         const avatarUrl = (h as any).avatarUrl ?? null;
@@ -269,10 +275,16 @@ export class ChatTab {
         );
 
         if (!exists) {
+          const myProfile = profileManager.profile ?? null;
+          const nickname = myProfile?.nickname ?? normalizedMy;
+
           const displayName = this.formatDisplayName(
             normalizedMy,
-            normalizedMy,
+            nickname,
           );
+
+          const avatarUrl = myProfile?.avatarUrl ?? null;
+
           const avatarInitial =
             displayName.trim().charAt(0).toUpperCase() ||
             normalizedMy.slice(2, 3).toUpperCase() ||
@@ -285,11 +297,10 @@ export class ChatTab {
             holdersInChat: 0,
             unreadCount: 0,
             avatarInitial,
-            avatarUrl: null,
+            avatarUrl,
             messages: [],
           };
 
-          // 내 방을 가장 위에 배치
           this.threads.unshift(myThread);
         }
       }
@@ -302,7 +313,6 @@ export class ChatTab {
       if (this.currentThread) {
         await this.activateThread(this.currentThread);
       } else {
-        // No persona holdings: show helper message
         this.threadListEl.innerHTML =
           '<div style="padding:0.75rem 1.5rem; font-size:0.85rem; color:#888;">You do not hold any persona fragments yet.</div>';
       }
@@ -381,16 +391,17 @@ export class ChatTab {
           alt: thread.name || 'Persona',
         }) as HTMLImageElement;
         avatarEl.append(img);
-      } else if (this.isWalletAddress(thread.personaAddress)) {
-        const jazz = this.createAddressJazzicon(thread.personaAddress);
-        if (jazz) {
-          (jazz as HTMLElement).classList.add('chat-thread-avatar-img');
-          avatarEl.append(jazz as HTMLElement);
+      } else {
+        const img = this.createAddressAvatarImg(
+          thread.personaAddress,
+          thread.name || 'Persona',
+          'chat-thread-avatar-img',
+        );
+        if (img) {
+          avatarEl.append(img);
         } else {
           avatarEl.textContent = thread.avatarInitial;
         }
-      } else {
-        avatarEl.textContent = thread.avatarInitial;
       }
 
       const item = el(
@@ -417,7 +428,6 @@ export class ChatTab {
       item.addEventListener('click', () => {
         this.activateThread(thread);
 
-        // On mobile open full-screen modal
         if (window.matchMedia('(max-width: 900px)').matches) {
           this.openMobileChatModal(thread);
         }
@@ -506,14 +516,20 @@ export class ChatTab {
     return this.shortenAddress(address);
   }
 
-  private createAddressJazzicon(address: string): HTMLElement | null {
+  private createAddressAvatarImg(
+    address: string,
+    alt: string,
+    className: string,
+  ): HTMLImageElement | null {
+    if (!this.isWalletAddress(address)) return null;
     try {
-      if (!this.isWalletAddress(address)) return null;
-      const normalized = getAddress(address as `0x${string}`);
-      const jazz = createJazzicon(normalized);
-      (jazz as HTMLElement).style.width = '100%';
-      (jazz as HTMLElement).style.height = '100%';
-      return jazz as HTMLElement;
+      const checksum = getAddress(address as `0x${string}`);
+      const src = getAddressAvatarDataUrl(checksum as `0x${string}`);
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = alt;
+      img.className = className;
+      return img;
     } catch {
       return null;
     }
@@ -580,22 +596,24 @@ export class ChatTab {
     if (!this.headerAvatarEl) return;
 
     this.headerAvatarEl.innerHTML = '';
+
     if (thread.avatarUrl) {
       const img = el('img.chat-main-avatar-img', {
         src: thread.avatarUrl,
         alt: thread.name || 'Persona',
       }) as HTMLImageElement;
       this.headerAvatarEl.append(img);
-    } else if (this.isWalletAddress(thread.personaAddress)) {
-      const jazz = this.createAddressJazzicon(thread.personaAddress);
-      if (jazz) {
-        (jazz as HTMLElement).classList.add('chat-main-avatar-img');
-        this.headerAvatarEl.append(jazz);
+    } else {
+      const img = this.createAddressAvatarImg(
+        thread.personaAddress,
+        thread.name || 'Persona',
+        'chat-main-avatar-img',
+      );
+      if (img) {
+        this.headerAvatarEl.append(img);
       } else {
         this.headerAvatarEl.textContent = thread.avatarInitial;
       }
-    } else {
-      this.headerAvatarEl.textContent = thread.avatarInitial;
     }
   }
 
@@ -614,7 +632,6 @@ export class ChatTab {
         { class: `chat-message-row ${m.sender}` },
       );
 
-      // 아바타 (상대방 메시지일 때만 노출)
       let avatarEl: HTMLElement | null = null;
       if (m.sender === 'other') {
         avatarEl = el('div.chat-message-avatar') as HTMLElement;
@@ -627,12 +644,13 @@ export class ChatTab {
           }) as HTMLImageElement;
           avatarEl.append(img);
         } else if (m.walletAddress && this.isWalletAddress(m.walletAddress)) {
-          const jazz = this.createAddressJazzicon(m.walletAddress);
-          if (jazz) {
-            (jazz as HTMLElement).classList.add(
-              'chat-message-avatar-img',
-            );
-            avatarEl.append(jazz);
+          const img = this.createAddressAvatarImg(
+            m.walletAddress,
+            m.author || 'User',
+            'chat-message-avatar-img',
+          );
+          if (img) {
+            avatarEl.append(img);
           } else {
             avatarEl.textContent =
               m.author && m.author.length > 0
@@ -707,7 +725,6 @@ export class ChatTab {
         token,
       });
 
-      // WS가 정상적으로 연결되어 있으면, 서버 브로드캐스트를 통해서만 메시지를 추가.
       const wsOpen =
         this.ws &&
         this.wsPersona &&
@@ -728,8 +745,7 @@ export class ChatTab {
         );
         const avatarUrl = profile?.avatarUrl ?? null;
 
-        const author =
-          senderType === 'you' ? 'You' : displayName;
+        const author = senderType === 'you' ? 'You' : displayName;
 
         const time = new Date(msg.createdAt * 1000).toLocaleTimeString([], {
           hour: 'numeric',
@@ -747,7 +763,6 @@ export class ChatTab {
           raw: msg,
         };
 
-        // 이미 들어가 있다면 중복 방지
         if (!thread.messages.some((m) => Number(m.id) === Number(msg.id))) {
           thread.messages.push(view);
         }
@@ -765,12 +780,12 @@ export class ChatTab {
           this.renderMessagesInto(thread, this.mobileMessagesEl);
         }
       }
-
-      // WS가 열려 있는 경우엔 아무 것도 하지 않는다.
-      // 메시지는 handleIncomingMessage 를 통해 한 번만 추가된다.
     } catch (err: any) {
       console.error('[chat] send failed', err);
-      showErrorAlert('Failed to send', err?.message ?? 'Failed to send message');
+      showErrorAlert(
+        'Failed to send',
+        err?.message ?? 'Failed to send message',
+      );
     }
   }
 
@@ -867,8 +882,7 @@ export class ChatTab {
     );
     const avatarUrl = profile?.avatarUrl ?? null;
 
-    const author =
-      senderType === 'you' ? 'You' : displayName;
+    const author = senderType === 'you' ? 'You' : displayName;
 
     const time = new Date(msg.createdAt * 1000).toLocaleTimeString([], {
       hour: 'numeric',
@@ -886,7 +900,6 @@ export class ChatTab {
       raw: msg,
     };
 
-    // 숫자/문자열 섞여도 잘 동작하도록 방어
     if (thread.messages.some((m) => Number(m.id) === Number(msg.id))) {
       return;
     }
@@ -958,16 +971,17 @@ export class ChatTab {
         alt: thread.name || 'Persona',
       }) as HTMLImageElement;
       avatar.append(img);
-    } else if (this.isWalletAddress(thread.personaAddress)) {
-      const jazz = this.createAddressJazzicon(thread.personaAddress);
-      if (jazz) {
-        (jazz as HTMLElement).classList.add('chat-main-avatar-img');
-        avatar.append(jazz);
+    } else {
+      const img = this.createAddressAvatarImg(
+        thread.personaAddress,
+        thread.name || 'Persona',
+        'chat-main-avatar-img',
+      );
+      if (img) {
+        avatar.append(img);
       } else {
         avatar.textContent = thread.avatarInitial;
       }
-    } else {
-      avatar.textContent = thread.avatarInitial;
     }
 
     const nameEl = el('div.chat-main-name', thread.name);
@@ -993,11 +1007,9 @@ export class ChatTab {
     const messagesEl = el('div.chat-messages');
     this.renderMessagesInto(thread, messagesEl);
 
-    // 현재 모달 상태 저장
     this.mobileMessagesEl = messagesEl;
     this.mobileThreadId = thread.id;
 
-    // native input
     const input = el('input', {
       type: 'text',
       placeholder: 'Type a message...',
@@ -1047,13 +1059,11 @@ export class ChatTab {
     modal.present();
 
     modal.addEventListener('ionModalDidPresent', () => {
-      // 레이아웃 확정 이후 한 번 더 스크롤 아래로
       this.renderMessagesInto(thread, messagesEl);
     });
 
     modal.addEventListener('ionModalDidDismiss', () => {
       modal.remove();
-      // 모달 닫힐 때 ref 정리
       this.mobileMessagesEl = null;
       this.mobileThreadId = null;
     });

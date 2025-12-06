@@ -1,3 +1,4 @@
+import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
 import { AnyBuilder } from '@webtaku/any-builder';
 import { formatEther } from 'viem';
 import { PersonaFragments } from '../types/persona-fragments';
@@ -66,7 +67,11 @@ export function profile(
       if (host.includes('discord.com') || host.includes('discord.gg')) return 'logo-discord';
       if (host.includes('github.com')) return 'logo-github';
       if (host === 'youtu.be' || host.includes('youtube.com')) return 'logo-youtube';
-      if (host.includes('t.me') || host.includes('telegram.me') || host.includes('telegram.org')) {
+      if (
+        host.includes('t.me') ||
+        host.includes('telegram.me') ||
+        host.includes('telegram.org')
+      ) {
         return 'paper-plane-outline';
       }
       if (host.includes('linkedin.com')) return 'logo-linkedin';
@@ -135,12 +140,15 @@ export function profile(
   }
 
   const avatarInitial = avatarInitialFromName(displayName);
-  const avatarChildren = profile.avatarUrl
-    ? b('img.profile-avatar-img', {
-      src: profile.avatarUrl,
-      alt: displayName,
-    })
-    : avatarInitial;
+  const avatarSrc =
+    profile.avatarUrl && profile.avatarUrl.trim().length > 0
+      ? profile.avatarUrl
+      : getAddressAvatarDataUrl(profile.account as `0x${string}`);
+
+  const avatarChildren = b('img.profile-avatar-img', {
+    src: avatarSrc,
+    alt: displayName,
+  });
 
   const coverProps =
     profile.bannerUrl && profile.bannerUrl.trim().length > 0
@@ -151,7 +159,7 @@ export function profile(
     'section.profile-card.profile-main-card',
     b(
       'div.profile-main',
-      // data-address를 심어두면 클라이언트에서 Jazzicon으로 교체 가능
+      // data-address를 심어두면 클라이언트에서 AddressAvatar / Jazzicon 등으로 교체 가능
       b(
         'div.profile-avatar',
         {

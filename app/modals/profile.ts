@@ -1,4 +1,5 @@
-import { createJazzicon, tokenManager } from '@gaiaprotocol/client-common';
+import { getAddressAvatarDataUrl } from '@gaiaprotocol/address-avatar';
+import { tokenManager } from '@gaiaprotocol/client-common';
 import { el } from '@webtaku/el';
 import { profile as profileTemplate } from '../../shared/ui/profile'; // (builder, profile, posts)
 import './profile.css';
@@ -11,7 +12,7 @@ import { formatEther, getAddress } from 'viem';
 import { TradePanel } from '../components/trade-panel';
 import { Address } from '../contracts/persona-fragments';
 import { profileManager } from '../services/profile-manager';
-import { createPostModal } from './post'; // ⭐ 포스트 모달 import 추가
+import { createPostModal } from './post';
 
 /* =========================
  *   헬퍼들
@@ -106,31 +107,28 @@ function applyProfileData(
   if (avatar) {
     avatar.innerHTML = '';
 
-    if (data.avatarUrl) {
+    let src: string | null = null;
+
+    if (data.avatarUrl && data.avatarUrl.trim().length > 0) {
+      src = data.avatarUrl;
+    } else if (isWalletAddress(data.address)) {
+      const checksum = getAddress(data.address as `0x${string}`);
+      src = getAddressAvatarDataUrl(checksum as `0x${string}`);
+    }
+
+    if (src) {
       const img = document.createElement('img');
-      img.src = data.avatarUrl;
+      img.src = src;
       img.alt = data.name;
       img.className = 'profile-avatar-img';
       img.style.width = '100%';
       img.style.height = '100%';
       img.style.objectFit = 'cover';
       avatar.appendChild(img);
-    } else if (data.address && isWalletAddress(data.address)) {
-      try {
-        const checksum = getAddress(data.address as `0x${string}`);
-        const jazz = createJazzicon(checksum);
-        (jazz as HTMLElement).style.width = '100%';
-        (jazz as HTMLElement).style.height = '100%';
-        avatar.appendChild(jazz as HTMLElement);
-      } catch {
-        avatar.textContent = data.avatarInitial;
-      }
     } else {
       avatar.textContent = data.avatarInitial;
     }
   }
-
-  // 포스트 리스트는 shared 템플릿(postCard) 스타일을 그대로 사용하므로 수정하지 않는다.
 }
 
 /** 내부 링크를 SPA 라우터로 연결 */
@@ -256,7 +254,6 @@ async function loadOnchainStats(root: HTMLElement, profile: Profile) {
     }
   } catch (err) {
     console.error('[user-profile-modal] loadOnchainStats error', err);
-    // 실패해도 SSR/DB 값 그대로 둔다.
   }
 }
 
@@ -482,7 +479,7 @@ export function createUserProfileModal(
       // 제목 업데이트
       titleEl.textContent = data.name;
 
-      // 프로필 탭과 동일한 인터랙티브 기능들 mount
+      // 인터랙티브 기능 mount
       try {
         mountTradePanel(profileRoot, profile);
         loadUserHoldingOrChatCTA(profileRoot, profile, navigate).catch(
