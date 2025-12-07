@@ -44,7 +44,7 @@ export const homeTab = h(
             outline: '',
             pill: '',
             'data-action': 'learn-more',
-            href: 'https://gaia-protocol.notion.site/What-Is-Gaia-Personas-2afb34b198408064bdcbddd898772c0b',
+            href: 'https://gaia-protocol.notion.site/Gaia-Personas-A-Web3-SocialFi-Platform-for-Tokenized-Digital-Identity-2afb34b198408064bdcbddd898772c0b',
             target: '_blank',
           },
           'Learn More',
