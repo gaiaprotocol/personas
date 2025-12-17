@@ -726,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    (tokenManager as any).on?.('signedIn', async () => {
+    tokenManager.on('signedIn', async () => {
       await profileManager.init();
       applyProfileAvatar(profileManager.profile);
 
@@ -734,7 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
       await notificationsTab?.refresh();
     });
 
-    (tokenManager as any).on?.('signedOut', () => {
+    tokenManager.on('signedOut', () => {
       applyProfileAvatar(null);
 
       // Reset notifications (and badge) after sign-out
