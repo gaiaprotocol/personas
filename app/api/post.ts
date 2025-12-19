@@ -43,15 +43,15 @@ function isValidNicknameLocal(nickname: string): boolean {
 function assertValidProfileInput(input: SaveProfileInput) {
   // 최소 한 필드 이상
   if (
-    input.nickname === undefined &&
-    input.bio === undefined &&
-    input.avatarUrl === undefined &&
-    input.bannerUrl === undefined
+    !input.nickname &&
+    !input.bio &&
+    !input.avatarUrl &&
+    !input.bannerUrl
   ) {
     throw new Error('At least one of nickname, bio, avatarUrl, or bannerUrl must be provided.');
   }
 
-  if (input.nickname !== undefined) {
+  if (input.nickname) {
     const nickname = input.nickname.trim();
     if (!nickname) throw new Error('nickname is empty');
     if (nickname.length > MAX_NICKNAME_LEN) {
@@ -62,7 +62,7 @@ function assertValidProfileInput(input: SaveProfileInput) {
     }
   }
 
-  if (input.bio !== undefined) {
+  if (input.bio) {
     const bio = input.bio.trim();
     if (bio.length > MAX_BIO_LEN) {
       throw new Error(`Bio exceeds maximum length of ${MAX_BIO_LEN}.`);
@@ -72,7 +72,7 @@ function assertValidProfileInput(input: SaveProfileInput) {
     }
   }
 
-  if (input.avatarUrl !== undefined) {
+  if (input.avatarUrl) {
     const url = input.avatarUrl.trim();
     if (url.length > MAX_URL_LEN) {
       throw new Error(`avatarUrl URL exceeds maximum length of ${MAX_URL_LEN}.`);
