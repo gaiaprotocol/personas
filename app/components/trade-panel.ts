@@ -476,9 +476,13 @@ export class TradePanel {
         });
 
         console.log('[TradePanel] buy tx sent', hash, receipt);
-        if (this.opts.onTraded) {
-          this.opts.onTraded();
-        }
+
+        // 온 체인에서 데이터를 바로 가져오면 이전 데이터일 가능성이 있음.
+        setTimeout(() => {
+          if (this.opts.onTraded) {
+            this.opts.onTraded();
+          }
+        }, 2000)
       } else {
         // ===== SELL FLOW =====
         const price = await getSellPrice(personaAddress, amount);
@@ -508,9 +512,13 @@ export class TradePanel {
         });
 
         console.log('[TradePanel] sell tx sent', hash, receipt);
-        if (this.opts.onTraded) {
-          this.opts.onTraded();
-        }
+
+        // 온 체인에서 데이터를 바로 가져오면 이전 데이터일 가능성이 있음.
+        setTimeout(() => {
+          if (this.opts.onTraded) {
+            this.opts.onTraded();
+          }
+        }, 2000)
       }
     } catch (err: any) {
       const message =
