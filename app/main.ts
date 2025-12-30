@@ -137,6 +137,7 @@ let currentProfileRouteId: string | null = null;
 let chatTab: ChatTab | null = null;
 let pendingChatPersonaId: string | null = null;
 let notificationsTab: NotificationsTab | null = null;
+let settingsModal: HTMLElement | null = null;
 
 // =====================
 //   Tab helpers
@@ -306,11 +307,15 @@ function openProfileMenu(anchorBtn: HTMLElement) {
   itemProfile.style.textTransform = 'capitalize';
   itemProfile.textContent = 'View profile';
 
+  const itemSettings = document.createElement('sl-menu-item') as HTMLElement;
+  itemSettings.setAttribute('data-action', 'settings');
+  itemSettings.textContent = 'App Settings';
+
   const itemLogout = document.createElement('sl-menu-item') as HTMLElement;
   itemLogout.setAttribute('data-action', 'logout');
   itemLogout.textContent = 'Logout';
 
-  menu.append(itemProfile, itemLogout);
+  menu.append(itemProfile, itemSettings, itemLogout);
   wrapper.appendChild(menu);
   document.body.appendChild(wrapper);
 
@@ -331,6 +336,10 @@ function openProfileMenu(anchorBtn: HTMLElement) {
       const addr = tokenManager.getAddress();
       if (addr) {
         router.navigate(`/profile/${addr}`);
+      }
+    } else if (action === 'settings') {
+      if (settingsModal) {
+        await (settingsModal as any).present();
       }
     } else if (action === 'logout') {
       try {
@@ -868,7 +877,7 @@ document.addEventListener('DOMContentLoaded', () => {
       language: 'system',
     };
 
-    const settingsModal = createSettingsModal(currentSettings, {
+    settingsModal = createSettingsModal(currentSettings, {
       async onSave(next) {
         currentSettings = next;
       },
