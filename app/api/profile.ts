@@ -10,7 +10,9 @@ export type SaveProfileInput = {
   nickname?: string;
   bio?: string;
   avatarUrl?: string;
+  avatarThumbnailUrl?: string;
   bannerUrl?: string;
+  bannerThumbnailUrl?: string;
   socialLinks?: SocialLinks;
 };
 
@@ -37,9 +39,11 @@ function assertValidProfileInput(input: SaveProfileInput) {
     !input.nickname &&
     !input.bio &&
     !input.avatarUrl &&
-    !input.bannerUrl
+    !input.avatarThumbnailUrl &&
+    !input.bannerUrl &&
+    !input.bannerThumbnailUrl
   ) {
-    throw new Error('At least one of nickname, bio, avatarUrl, or bannerUrl must be provided.');
+    throw new Error('At least one of nickname, bio, avatarUrl, avatarThumbnailUrl, bannerUrl, or bannerThumbnailUrl must be provided.');
   }
 
   if (input.nickname) {
