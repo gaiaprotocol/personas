@@ -46,10 +46,13 @@ export function postCard<B extends AnyBuilder>(
         ? 'post-card--compact'
         : 'post-card--feed';
 
+  // Prefer thumbnail URL for better performance
   const avatarSrc =
-    post.authorAvatarUrl && post.authorAvatarUrl.trim().length > 0
-      ? post.authorAvatarUrl
-      : getAddressAvatarDataUrl(post.author as `0x${string}`);
+    (post.authorAvatarThumbnailUrl && post.authorAvatarThumbnailUrl.trim().length > 0)
+      ? post.authorAvatarThumbnailUrl
+      : (post.authorAvatarUrl && post.authorAvatarUrl.trim().length > 0)
+        ? post.authorAvatarUrl
+        : getAddressAvatarDataUrl(post.author as `0x${string}`);
 
   const avatarNode = b(
     'div.post-card-avatar',
@@ -124,10 +127,13 @@ export function postDetailMain<B extends AnyBuilder>(
   const handle = `@${shortAddress}`;
   const time = formatRelativeTimeFromSeconds(post.createdAt);
 
+  // Prefer thumbnail URL for better performance
   const avatarSrc =
-    post.authorAvatarUrl && post.authorAvatarUrl.trim().length > 0
-      ? post.authorAvatarUrl
-      : getAddressAvatarDataUrl(post.author as `0x${string}`);
+    (post.authorAvatarThumbnailUrl && post.authorAvatarThumbnailUrl.trim().length > 0)
+      ? post.authorAvatarThumbnailUrl
+      : (post.authorAvatarUrl && post.authorAvatarUrl.trim().length > 0)
+        ? post.authorAvatarUrl
+        : getAddressAvatarDataUrl(post.author as `0x${string}`);
 
   const avatarNode = b(
     'div.post-avatar',
@@ -237,10 +243,13 @@ export function replyList<B extends AnyBuilder>(
     const handle = `@${shortAddress}`;
     const time = formatRelativeTimeFromSeconds(rp.createdAt);
 
+    // Prefer thumbnail URL for better performance
     const avatarSrc =
-      rp.authorAvatarUrl && rp.authorAvatarUrl.trim().length > 0
-        ? rp.authorAvatarUrl
-        : getAddressAvatarDataUrl(rp.author as `0x${string}`);
+      (rp.authorAvatarThumbnailUrl && rp.authorAvatarThumbnailUrl.trim().length > 0)
+        ? rp.authorAvatarThumbnailUrl
+        : (rp.authorAvatarUrl && rp.authorAvatarUrl.trim().length > 0)
+          ? rp.authorAvatarUrl
+          : getAddressAvatarDataUrl(rp.author as `0x${string}`);
 
     const avatarNode = b(
       'div.post-reply-avatar-small',

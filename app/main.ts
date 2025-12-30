@@ -7,10 +7,19 @@ import {
 import { BackButtonEvent, setupConfig } from '@ionic/core';
 import { defineCustomElements } from '@ionic/core/loader';
 import '@shoelace-style/shoelace';
+import { initializeApp, type FirebaseApp } from 'firebase/app';
 import Navigo from 'navigo';
 import { formatEther, getAddress, zeroAddress } from 'viem';
 
 import { tabConfig } from '../shared/tab-config';
+import { registerFcmToken, unregisterFcmToken } from './api/fcm';
+import {
+  clearFcmToken,
+  getCurrentFcmToken,
+  initializePushNotifications,
+  setupForegroundMessageHandler,
+  setupServiceWorkerMessageHandler,
+} from './services/push-notification';
 import './main.css';
 
 import { createEditProfileModal } from './modals/edit-profile';
@@ -61,6 +70,33 @@ if (sid) {
 }
 
 export const isWebView = urlParams.get('source') === 'webview';
+
+// =====================
+//    Firebase setup
+// =====================
+
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDr1Z_EFx_xeV2iTIDAM8P17LlALdHrhxc',
+  authDomain: 'gaia-personas.firebaseapp.com',
+  projectId: 'gaia-personas',
+  storageBucket: 'gaia-personas.firebasestorage.app',
+  messagingSenderId: '615977174684',
+  appId: '1:615977174684:web:a70fe1bdba155c19fb0f59',
+  measurementId: 'G-K0EJRQ4574',
+} as const;
+
+let firebaseApp: FirebaseApp | null = null;
+
+function initFirebase(): FirebaseApp | null {
+  if (firebaseApp) return firebaseApp;
+  try {
+    firebaseApp = initializeApp(FIREBASE_CONFIG);
+    return firebaseApp;
+  } catch (err) {
+    console.error('[Firebase] Failed to initialize:', err);
+    return null;
+  }
+}
 
 // =====================
 //    Ionic setup
@@ -686,6 +722,25 @@ document.addEventListener('DOMContentLoaded', () => {
     await profileManager.init();
     applyProfileAvatar(profileManager.profile);
 
+    // Initialize push notifications for already logged-in users
+    if (!isWebView && tokenManager.has()) {
+      const app = initFirebase();
+      if (app) {
+        await initializePushNotifications(app).catch(console.error);
+
+        // Setup foreground message handler
+        setupForegroundMessageHandler(app, (payload) => {
+          console.log('[Push] Foreground notification:', payload);
+          // Could show an in-app toast notification here
+        });
+      }
+    }
+
+    // Setup service worker message handler for navigation
+    setupServiceWorkerMessageHandler((path) => {
+      router.navigate(path);
+    });
+
     profileManager.on('change', (newProfile) => {
       applyProfileAvatar(newProfile);
 
@@ -732,6 +787,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Reload notifications after sign-in and update badge
       await notificationsTab?.refresh();
+
+      // Initialize push notifications after sign-in
+      if (!isWebView) {
+        const app = initFirebase();
+        if (app) {
+          await initializePushNotifications(app).catch(console.error);
+        }
+      }
     });
 
     tokenManager.on('signedOut', () => {
@@ -808,6 +871,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsModal = createSettingsModal(currentSettings, {
       async onSave(next) {
         currentSettings = next;
+      },
+      async onPushToggle(enabled) {
+        if (!isWebView) {
+          const app = initFirebase();
+          if (!app) return;
+
+          if (enabled) {
+            // Enable push notifications
+            await initializePushNotifications(app);
+          } else {
+            // Disable push notifications
+            const currentToken = getCurrentFcmToken();
+            if (currentToken) {
+              await unregisterFcmToken(currentToken);
+              clearFcmToken();
+            }
+          }
+        }
       },
     });
     document.body.appendChild(settingsModal);

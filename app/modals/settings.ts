@@ -1,4 +1,5 @@
 import { el } from "@webtaku/el";
+import { getPushPermissionStatus } from "../services/push-notification";
 import "./settings.css";
 
 export type AppLanguage = "system" | "en" | "ko";
@@ -19,6 +20,7 @@ export function createSettingsModal(
   initial: AppSettings,
   opts?: {
     onSave?: (next: AppSettings) => void | Promise<void>;
+    onPushToggle?: (enabled: boolean, prev: boolean) => void | Promise<void>;
   }
 ): HTMLIonModalElement {
   // .settings-modal 클래스로 스코프
@@ -102,6 +104,73 @@ export function createSettingsModal(
     )
   );
 
+  // 권한 거부 안내 메시지
+  const permissionStatus = getPushPermissionStatus();
+  const isDenied = permissionStatus === 'denied';
+  const isUnsupported = permissionStatus === 'unsupported';
+
+  // 토글 비활성화 (권한 거부 또는 미지원 시)
+  if (isDenied || isUnsupported) {
+    pushToggle.disabled = true;
+    pushToggle.checked = false;
+  }
+
+  const deniedNote = el("ion-item", {
+    lines: "none",
+    style: {
+      display: isDenied ? "" : "none",
+      "--background": "transparent"
+    } as any
+  },
+    el("ion-label", {
+      style: {
+        whiteSpace: "normal",
+        fontSize: "0.875rem",
+        color: "var(--ion-color-warning)"
+      }
+    },
+      el("p", {
+        style: { margin: "0 0 0.5rem 0", display: "flex", alignItems: "center", gap: "0.5rem" }
+      },
+        el("ion-icon", { name: "warning-outline" }),
+        "Push notifications are blocked"
+      ),
+      el("p", {
+        style: { margin: "0 0 0.5rem 0", fontSize: "0.8rem", color: "var(--ion-color-medium)" }
+      }, "To enable push notifications:"),
+      el("ol", {
+        style: {
+          margin: "0",
+          paddingLeft: "1.25rem",
+          lineHeight: "1.6",
+          fontSize: "0.8rem",
+          color: "var(--ion-color-medium)"
+        }
+      },
+        el("li", "Click the lock/info icon in your browser address bar"),
+        el("li", "Find \"Notifications\" in site settings"),
+        el("li", "Change from \"Block\" to \"Allow\""),
+        el("li", "Reload the page")
+      )
+    )
+  );
+
+  const unsupportedNote = el("ion-item", {
+    lines: "none",
+    style: {
+      display: isUnsupported ? "" : "none",
+      "--background": "transparent"
+    } as any
+  },
+    el("ion-label", {
+      style: {
+        whiteSpace: "normal",
+        fontSize: "0.875rem",
+        color: "var(--ion-color-medium)"
+      }
+    }, "Push notifications are not supported in this browser.")
+  );
+
   const notificationsGroup = el(
     "ion-list",
     el("ion-list-header", el("ion-label", "Notifications")),
@@ -110,6 +179,8 @@ export function createSettingsModal(
       el("ion-label", "Push notifications"),
       pushToggle
     ),
+    deniedNote,
+    unsupportedNote,
     el(
       "ion-item",
       el("ion-label", "Persona trades"),
@@ -195,6 +266,11 @@ export function createSettingsModal(
         marketingEmails: !!marketingToggle.checked,
         language: (langSelect.value as AppLanguage) || "system",
       };
+
+      // Handle push toggle change
+      if (opts?.onPushToggle && next.pushEnabled !== initial.pushEnabled) {
+        await opts.onPushToggle(next.pushEnabled, initial.pushEnabled);
+      }
 
       if (opts?.onSave) {
         await opts.onSave(next);

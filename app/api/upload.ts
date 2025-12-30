@@ -1,6 +1,15 @@
 declare const GAIA_API_BASE_URI: string;
 
-export async function uploadImage(file: File, type: 'avatar' | 'banner', token: string) {
+export interface UploadResult {
+  url: string;
+  thumbnailUrl: string;
+}
+
+export async function uploadImage(
+  file: File,
+  type: 'avatar' | 'banner',
+  token: string
+): Promise<UploadResult> {
   const res = await fetch(`${GAIA_API_BASE_URI}/upload/${type}`, {
     method: 'POST',
     headers: {
@@ -10,5 +19,8 @@ export async function uploadImage(file: File, type: 'avatar' | 'banner', token: 
     body: file,
   });
   const data = await res.json();
-  return data.url as string;
+  return {
+    url: data.url as string,
+    thumbnailUrl: data.thumbnailUrl as string,
+  };
 }

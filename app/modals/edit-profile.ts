@@ -19,7 +19,9 @@ type ProfileData = {
   bio: string;
   socialLinks: SocialLinks; // 항상 Record<string, string>
   bannerUrl: string | null;
+  bannerThumbnailUrl: string | null;
   avatarUrl: string | null;
+  avatarThumbnailUrl: string | null;
 };
 
 /* 랜덤 ID 헬퍼 (crypto.randomUUID가 없을 경우 대비) */
@@ -49,7 +51,9 @@ async function fetchProfile(
   bio: string | null;
   socialLinks: SocialLinks | null;
   bannerUrl: string | null;
+  bannerThumbnailUrl: string | null;
   avatarUrl: string | null;
+  avatarThumbnailUrl: string | null;
 }> {
   const res: Profile = await fetchMyProfile(token);
 
@@ -58,7 +62,9 @@ async function fetchProfile(
     bio: res.bio ?? null,
     socialLinks: res.socialLinks ?? null,
     bannerUrl: res.bannerUrl ?? null,
+    bannerThumbnailUrl: res.bannerThumbnailUrl ?? null,
     avatarUrl: res.avatarUrl ?? null,
+    avatarThumbnailUrl: res.avatarThumbnailUrl ?? null,
   };
 }
 
@@ -73,11 +79,21 @@ async function setProfile(
     bio: string;
     socialLinks: SocialLinks;
     avatarUrl: string | null;
+    avatarThumbnailUrl: string | null;
     bannerUrl: string | null;
+    bannerThumbnailUrl: string | null;
   },
   token: string,
 ): Promise<void> {
-  const { nickname, bio, socialLinks, avatarUrl, bannerUrl } = payload;
+  const {
+    nickname,
+    bio,
+    socialLinks,
+    avatarUrl,
+    avatarThumbnailUrl,
+    bannerUrl,
+    bannerThumbnailUrl,
+  } = payload;
 
   // saveMyProfile의 SaveProfileInput 구조에 맞게 그대로 전달
   const body: Record<string, unknown> = {
@@ -85,7 +101,9 @@ async function setProfile(
     bio,
     socialLinks,
     avatarUrl,
+    avatarThumbnailUrl,
     bannerUrl,
+    bannerThumbnailUrl,
   };
 
   await saveMyProfile(body as any, token);
@@ -543,7 +561,9 @@ export function createEditProfileModal(address: string, token: string) {
     bio: '',
     socialLinks: {},
     bannerUrl: null,
+    bannerThumbnailUrl: null,
     avatarUrl: null,
+    avatarThumbnailUrl: null,
   };
   let isSaving = false;
 
@@ -670,7 +690,9 @@ export function createEditProfileModal(address: string, token: string) {
         bio: profile.bio ?? '',
         socialLinks: profile.socialLinks ?? {},
         bannerUrl: profile.bannerUrl,
+        bannerThumbnailUrl: profile.bannerThumbnailUrl,
         avatarUrl: profile.avatarUrl,
+        avatarThumbnailUrl: profile.avatarThumbnailUrl,
       };
 
       nicknameInput.value = originalProfile.nickname;
@@ -711,7 +733,9 @@ export function createEditProfileModal(address: string, token: string) {
         bio: '',
         socialLinks: {},
         bannerUrl: null,
+        bannerThumbnailUrl: null,
         avatarUrl: null,
+        avatarThumbnailUrl: null,
       };
 
       socialLinkInputs = [];
@@ -748,14 +772,20 @@ export function createEditProfileModal(address: string, token: string) {
     try {
       // 1) 아바타 / 배너 파일이 변경된 경우 업로드해서 URL 획득
       let avatarUrlToSave: string | null = originalAvatarUrl;
+      let avatarThumbnailUrlToSave: string | null = originalProfile.avatarThumbnailUrl;
       let bannerUrlToSave: string | null = originalBannerUrl;
+      let bannerThumbnailUrlToSave: string | null = originalProfile.bannerThumbnailUrl;
 
       if (newAvatarFile) {
-        avatarUrlToSave = await uploadImage(newAvatarFile, 'avatar', token);
+        const result = await uploadImage(newAvatarFile, 'avatar', token);
+        avatarUrlToSave = result.url;
+        avatarThumbnailUrlToSave = result.thumbnailUrl;
       }
 
       if (newBannerFile) {
-        bannerUrlToSave = await uploadImage(newBannerFile, 'banner', token);
+        const result = await uploadImage(newBannerFile, 'banner', token);
+        bannerUrlToSave = result.url;
+        bannerThumbnailUrlToSave = result.thumbnailUrl;
       }
 
       // 2) /set-profile 호출 (URL만 전달)
@@ -765,7 +795,9 @@ export function createEditProfileModal(address: string, token: string) {
           bio,
           socialLinks: cleanSocials,
           avatarUrl: avatarUrlToSave,
+          avatarThumbnailUrl: avatarThumbnailUrlToSave,
           bannerUrl: bannerUrlToSave,
+          bannerThumbnailUrl: bannerThumbnailUrlToSave,
         },
         token,
       );

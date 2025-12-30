@@ -159,10 +159,13 @@ export function profile(
   }
 
   const avatarInitial = avatarInitialFromName(displayName);
+  // Prefer thumbnail URL for better performance
   const avatarSrc =
-    profile.avatarUrl && profile.avatarUrl.trim().length > 0
-      ? profile.avatarUrl
-      : getAddressAvatarDataUrl(profile.account as `0x${string}`);
+    (profile.avatarThumbnailUrl && profile.avatarThumbnailUrl.trim().length > 0)
+      ? profile.avatarThumbnailUrl
+      : (profile.avatarUrl && profile.avatarUrl.trim().length > 0)
+        ? profile.avatarUrl
+        : getAddressAvatarDataUrl(profile.account as `0x${string}`);
 
   const avatarChildren = avatarSrc
     ? b('img.profile-avatar-img', {
@@ -171,9 +174,14 @@ export function profile(
     })
     : b('span.profile-avatar-initial', avatarInitial);
 
+  // Prefer thumbnail URL for banner as well
+  const bannerSrc =
+    (profile.bannerThumbnailUrl && profile.bannerThumbnailUrl.trim().length > 0)
+      ? profile.bannerThumbnailUrl
+      : profile.bannerUrl;
   const coverProps =
-    profile.bannerUrl && profile.bannerUrl.trim().length > 0
-      ? ({ style: `background-image: url('${profile.bannerUrl}')` } as any)
+    bannerSrc && bannerSrc.trim().length > 0
+      ? ({ style: `background-image: url('${bannerSrc}')` } as any)
       : ({} as any);
 
   const mainProfileCard = b(

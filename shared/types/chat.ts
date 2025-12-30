@@ -71,7 +71,9 @@ export interface PersonaChatMessageWithProfileRow extends PersonaChatMessageRow 
   profile_nickname: string | null;
   profile_bio: string | null;
   profile_avatar_url: string | null;
+  profile_avatar_thumbnail_url: string | null;
   profile_banner_url: string | null;
+  profile_banner_thumbnail_url: string | null;
   profile_social_links: string | null; // JSON string
   profile_created_at: number | null;
   profile_updated_at: number | null;
@@ -144,7 +146,9 @@ export function rowWithProfileToPersonaChatMessage(
       nickname: row.profile_nickname,
       bio: row.profile_bio,
       avatarUrl: row.profile_avatar_url,
+      avatarThumbnailUrl: row.profile_avatar_thumbnail_url,
       bannerUrl: row.profile_banner_url,
+      bannerThumbnailUrl: row.profile_banner_thumbnail_url,
       socialLinks,
       createdAt: row.profile_created_at,
       updatedAt: row.profile_updated_at,

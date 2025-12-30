@@ -7,6 +7,7 @@ export interface PersonaPost {
   // 작성자 프로필 정보 (profiles JOIN 결과)
   authorNickname: string | null;
   authorAvatarUrl: string | null;
+  authorAvatarThumbnailUrl: string | null;
 
   content: string;
   // DB: string | null (JSON), Domain: parsed object
@@ -52,6 +53,7 @@ export type PersonaPostRow = {
 export type PersonaPostRowWithProfile = PersonaPostRow & {
   author_nickname: string | null;
   author_avatar_url: string | null;
+  author_avatar_thumbnail_url: string | null;
 };
 
 export function rowToPersonaPost(
@@ -70,12 +72,16 @@ export function rowToPersonaPost(
 
   let authorNickname: string | null = null;
   let authorAvatarUrl: string | null = null;
+  let authorAvatarThumbnailUrl: string | null = null;
 
   if ('author_nickname' in row) {
     authorNickname = row.author_nickname ?? null;
   }
   if ('author_avatar_url' in row) {
     authorAvatarUrl = row.author_avatar_url ?? null;
+  }
+  if ('author_avatar_thumbnail_url' in row) {
+    authorAvatarThumbnailUrl = row.author_avatar_thumbnail_url ?? null;
   }
 
   return {
@@ -84,6 +90,7 @@ export function rowToPersonaPost(
 
     authorNickname,
     authorAvatarUrl,
+    authorAvatarThumbnailUrl,
 
     content: row.content,
     attachments,
