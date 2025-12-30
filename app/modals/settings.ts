@@ -235,10 +235,10 @@ export function createSettingsModal(
   const body = el(
     "div",
     { className: "settings-body" },
-    appearanceGroup,
+    //appearanceGroup,
     notificationsGroup,
-    emailGroup,
-    languageGroup
+    //emailGroup,
+    //languageGroup
   );
 
   const content = el(
