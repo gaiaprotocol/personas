@@ -2,6 +2,10 @@ import { el } from "@webtaku/el";
 import { getPushPermissionStatus } from "../services/push-notification";
 import "./settings.css";
 
+const isStandalone = () =>
+  (window.navigator as any).standalone === true ||
+  window.matchMedia?.('(display-mode: standalone)').matches === true;
+
 export type AppLanguage = "system" | "en" | "ko";
 
 export interface AppSettings {
@@ -115,6 +119,42 @@ export function createSettingsModal(
     pushToggle.checked = false;
   }
 
+  const isPWA = isStandalone();
+
+  // 브라우저 모드 안내
+  const browserInstructions = el("ol", {
+    style: {
+      margin: "0",
+      paddingLeft: "1.25rem",
+      lineHeight: "1.6",
+      fontSize: "0.8rem",
+      color: "var(--ion-color-medium)",
+      display: isPWA ? "none" : "block"
+    }
+  },
+    el("li", "Click the lock/info icon in your browser address bar"),
+    el("li", "Find \"Notifications\" in site settings"),
+    el("li", "Change from \"Block\" to \"Allow\""),
+    el("li", "Reload the page")
+  );
+
+  // PWA 모드 안내
+  const pwaInstructions = el("ol", {
+    style: {
+      margin: "0",
+      paddingLeft: "1.25rem",
+      lineHeight: "1.6",
+      fontSize: "0.8rem",
+      color: "var(--ion-color-medium)",
+      display: isPWA ? "block" : "none"
+    }
+  },
+    el("li", "Open your device's Settings app"),
+    el("li", "Find this app in your app list"),
+    el("li", "Tap \"Notifications\" and enable them"),
+    el("li", "Return to this app")
+  );
+
   const deniedNote = el("ion-item", {
     lines: "none",
     style: {
@@ -138,20 +178,8 @@ export function createSettingsModal(
       el("p", {
         style: { margin: "0 0 0.5rem 0", fontSize: "0.8rem", color: "var(--ion-color-medium)" }
       }, "To enable push notifications:"),
-      el("ol", {
-        style: {
-          margin: "0",
-          paddingLeft: "1.25rem",
-          lineHeight: "1.6",
-          fontSize: "0.8rem",
-          color: "var(--ion-color-medium)"
-        }
-      },
-        el("li", "Click the lock/info icon in your browser address bar"),
-        el("li", "Find \"Notifications\" in site settings"),
-        el("li", "Change from \"Block\" to \"Allow\""),
-        el("li", "Reload the page")
-      )
+      browserInstructions,
+      pwaInstructions
     )
   );
 
